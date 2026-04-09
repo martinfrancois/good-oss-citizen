@@ -1,0 +1,20 @@
+name: Publish
+
+permissions:
+  contents: write
+  pull-requests: write
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: tesslio/patch-version-publish@v1
+        with:
+          token: ${{ secrets.TESSL_TOKEN }}
+          path: tiles/good-oss-citizen
