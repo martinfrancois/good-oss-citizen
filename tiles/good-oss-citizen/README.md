@@ -38,9 +38,24 @@ Every rule and skill instruction traces back to documented failure modes from re
 
 ## For maintainers
 
-You don't have to ban AI. Add this to your README or CONTRIBUTING.md:
+You don't have to ban AI — you can guide it instead. Add a `tessl.json` to your repository root:
 
-> We accept considerate AI-assisted contributions. Install `tessl install tessl-labs/good-oss-citizen` first.
+```json
+{
+  "name": "your-project",
+  "dependencies": {
+    "tessl-labs/good-oss-citizen": {
+      "version": "1.0.1"
+    }
+  }
+}
+```
+
+Then mention it in your README, CONTRIBUTING.md, or AI_POLICY.md:
+
+> We accept considerate AI-assisted contributions. Install `npx tessl install tessl-labs/good-oss-citizen` first.
+
+AI agents read contribution guidelines before they start working. When an agent sees this instruction, it installs the tile and invokes it automatically — no manual setup from the contributor required.
 
 ## Links
 
