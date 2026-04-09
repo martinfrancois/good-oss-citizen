@@ -1,8 +1,8 @@
 name: Publish
 
 permissions:
-  id-token: write
-  contents: read
+  contents: write
+  pull-requests: write
 
 on:
   push:
@@ -13,8 +13,8 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: tesslio/action@main
+      - uses: actions/checkout@v4
+      - uses: tesslio/patch-version-publish@v1
         with:
           token: ${{ secrets.TESSL_TOKEN }}
-          command: "tile publish"
-          args: "tiles/good-oss-citizen --bump patch"
+          path: tiles/good-oss-citizen
