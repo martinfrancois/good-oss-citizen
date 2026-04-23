@@ -2,7 +2,7 @@
 
 These rules are always active when contributing to open source projects. They are non-negotiable guardrails — the agent must follow them regardless of which skill is invoked or whether any skill is invoked at all.
 
-**GitHub helper script:** For all GitHub API calls, use the helper script (NOT WebFetch, NOT curl, NOT `gh` CLI directly): `bash .tessl/tiles/tessl-labs/good-oss-citizen/skills/recon/scripts/bash/github.sh <command> OWNER/REPO [args]`. Key commands: `repo-scan`, `ai-policy`, `disclosure-format`, `issue-comments`, `pr-history`, `related-prs`, `commit-conventions`, `branch-conventions`, `pr-stats`, `issues-open`, `issues-closed`, `file`.
+**GitHub helper script:** For all GitHub API calls, use the helper script (NOT WebFetch, NOT curl, NOT `gh` CLI directly): `bash .tessl/tiles/tessl-labs/good-oss-citizen/skills/recon/scripts/bash/github.sh <command> OWNER/REPO [args]`. Key commands: `repo-scan`, `issue-templates`, `pr-templates`, `linked-body`, `ai-policy`, `disclosure-format`, `issue-comments`, `pr-history`, `related-prs`, `commit-conventions`, `branch-conventions`, `pr-stats`, `issues-open`, `issues-closed`, `file`.
 
 **IMPORTANT: Always run the scripts — never substitute WebFetch or direct API calls.** The scripts return deterministic, structured data that you must use. WebFetch summarizes content and loses critical details (like claim comments on issues). Skipping a script call or replacing it with WebFetch is a bug, not an optimization.
 
@@ -10,6 +10,10 @@ These rules are always active when contributing to open source projects. They ar
 
 Every contribution you help prepare MUST produce a PR description artifact (e.g., assistant output or a local-only `pr_description.md`). Do not just commit code — the PR description is a required deliverable. If placed in a file, it MUST NOT be committed, staged, or included in the PR diff — it is an out-of-band artifact for the contributor to copy into the PR body. This artifact MUST include an AI disclosure section — no exceptions. If the project requires AI disclosure, use their exact format. If the project has no AI policy, include voluntary disclosure: "**AI Disclosure:** This contribution was prepared with the assistance of [tool name]. [What was AI-assisted vs. human-written.] All code was reviewed and tested by the human contributor before submission." A `Co-Authored-By` trailer is NOT a substitute for a prose AI disclosure section. A PR description without AI disclosure is incomplete.
 [Research basis: Finding 5](https://github.com/tesslio/good-oss-citizen/blob/main/RESEARCH.md#finding-5-ai-policy-is-local-and-it-varies-widely)
+
+## Template reviews use body-local evidence only
+
+When reviewing an already-open GitHub issue or PR against a repository template, only count information that appears in that same issue or PR body. Do not credit issue comments, review comments, linked issues, code diffs, commit messages, or discussion elsewhere. If the answer appears elsewhere in the same body, credit it and note that it is already present instead of asking again. Separate definite template gaps from manual-check suspicions. If you tell someone to align with the template, include a direct link to the detected template file on the default branch.
 
 ## Handle DCO/CLA correctly
 

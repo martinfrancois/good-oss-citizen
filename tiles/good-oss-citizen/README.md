@@ -23,9 +23,9 @@ AI agents write working code but ignore everything around it: contribution guide
 
 The tile has three layers:
 
-- **Rules** (always-on, ~2.8k tokens) — the commandments. Never forge a DCO sign-off, never submit without human review, respect AI bans, never write code for a claimed issue. These fire regardless of which skill activated.
-- **Skills** (on-demand, ~5.3k tokens) — the scripture. Detailed workflow guidance for recon (scan the repo before writing code), propose (pick the right venue), and preflight (pre-submission checklist).
-- **Scripts** (19 commands) — the rituals. Deterministic steps that fetch structured data from the GitHub API: policy files, issue comments, commit conventions, prior rejected PRs, CODEOWNERS, legal requirements. Scripts fetch, the model interprets.
+- **Rules** (always-on, ~2.9k tokens) — the commandments. Never forge a DCO sign-off, never submit without human review, respect AI bans, never write code for a claimed issue. These fire regardless of which skill activated.
+- **Skills** (on-demand, ~6.4k tokens) — the scripture. Detailed workflow guidance for recon (scan the repo before writing code), propose (pick the right venue), preflight (pre-submission checklist), and template-review (audit an already-open GitHub issue or PR against the repo's template).
+- **Scripts** (24 commands) — the rituals. Deterministic steps that fetch structured data from the GitHub API: policy files, issue comments, issue/PR templates from the default branch, issue/PR bodies, commit conventions, prior rejected PRs, CODEOWNERS, legal requirements. Scripts fetch, the model interprets.
 
 ## Research
 

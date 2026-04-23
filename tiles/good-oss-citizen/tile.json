@@ -18,6 +18,9 @@
     },
     "preflight": {
       "path": "skills/preflight/SKILL.md"
+    },
+    "template-review": {
+      "path": "skills/template-review/SKILL.md"
     }
   }
 }

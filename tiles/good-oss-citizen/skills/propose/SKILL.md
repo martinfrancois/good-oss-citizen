@@ -87,7 +87,14 @@ If unsure, default to opening an issue or discussion first. A premature PR is wo
 Depending on the selected venue:
 
 ### For an issue:
-- Use the project's issue template if one exists. Fill every section.
+- Detect templates on the default branch first:
+```bash
+bash .tessl/tiles/tessl-labs/good-oss-citizen/skills/recon/scripts/bash/github.sh issue-templates OWNER/REPO <intent>
+```
+- If one or more issue templates exist, choose the template that best matches the intent (bug report, feature request, generic). When multiple fit, prefer the most specific. When none are a clean fit, fall back to a generic one.
+- Preserve the template's structure, headings, and required sections. Fill every section.
+- For YAML issue-form templates (`.yml` / `.yaml`), map the generated content into the declared form fields instead of switching to freeform markdown.
+- If no issue templates exist, use the current default issue format.
 - Reference any prior related issues, PRs, or discussions.
 - Describe the problem clearly. Describe the proposed approach. Ask if the approach is welcome before implementing.
 - Keep it concise — respect maintainer reading time.
@@ -110,6 +117,12 @@ Depending on the selected venue:
 - Address alternatives considered.
 
 ### For a PR (if that's the right venue):
+- Detect PR templates on the default branch first:
+```bash
+bash .tessl/tiles/tessl-labs/good-oss-citizen/skills/recon/scripts/bash/github.sh pr-templates OWNER/REPO <intent>
+```
+- If a PR template exists, preserve its exact structure and headings. Do not strip, reorder, or collapse template sections.
+- If multiple PR templates exist, choose the one whose filename best matches the change type. If still ambiguous, fall back to the first alphabetically.
 - Hand off to the preflight skill when the code is ready.
 
 ### When redirecting away from an issue (restriction, claim, or rejection):

@@ -38,10 +38,21 @@ Compare the PR's diff against typical PR size from recon findings:
 
 ## Check 3: PR template compliance
 
+Detect PR templates on the default branch first:
+```bash
+bash .tessl/tiles/tessl-labs/good-oss-citizen/skills/recon/scripts/bash/github.sh pr-templates OWNER/REPO <intent>
+```
+
 If the project has a PR template:
 - Verify every section is filled. Do not delete template sections.
+- Preserve the detected template's ordering and headings. Do not collapse multiple prompts into a custom summary.
+- If multiple PR templates exist, verify the selected template matches the change type. If the choice is ambiguous, prefer the first alphabetically.
+- Credit information already present elsewhere in the same PR body, even if it appears under the wrong heading or in freeform prose. Do not ask again for information already present in the body.
 - Verify the linked issue reference is present.
 - Verify any required checkboxes (AI disclosure, testing confirmation, CLA) are addressed.
+- Tighten checkbox review: the checked label must match the change described in the surrounding PR body. A misaligned checkbox label is a template compliance gap.
+- Separate real template gaps from things that require manual verification. Missing body content is a gap. A checkbox whose truth cannot be proven from the body alone is a manual follow-up item.
+- If you recommend aligning with the template, include a direct link to the selected template file on the default branch.
 
 If no template exists, verify the PR description at minimum contains:
 - What changed and why

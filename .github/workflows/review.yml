@@ -17,6 +17,7 @@ jobs:
           - tiles/good-oss-citizen/skills/recon/SKILL.md
           - tiles/good-oss-citizen/skills/propose/SKILL.md
           - tiles/good-oss-citizen/skills/preflight/SKILL.md
+          - tiles/good-oss-citizen/skills/template-review/SKILL.md
     steps:
       - uses: tesslio/action@main
         with:

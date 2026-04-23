@@ -18,7 +18,7 @@ Confirm the task involves contributing to an external open source project (GitHu
 ```bash
 bash .tessl/tiles/tessl-labs/good-oss-citizen/skills/recon/scripts/bash/github.sh repo-scan OWNER/REPO
 ```
-Parse output. Note every FOUND and NOT FOUND file. Proceed to Step 2.
+Parse output. Note every FOUND and NOT FOUND file, including the exact issue-template and PR-template paths detected on the default branch. Proceed to Step 2.
 
 ## Step 2: Can I contribute? (hard stops)
 
@@ -96,12 +96,22 @@ Read these FOUND files using the `file` command:
 ```bash
 bash .tessl/tiles/tessl-labs/good-oss-citizen/skills/recon/scripts/bash/github.sh file OWNER/REPO <path>
 ```
+Use the dedicated template helpers when templates exist, instead of guessing paths manually:
+```bash
+bash .tessl/tiles/tessl-labs/good-oss-citizen/skills/recon/scripts/bash/github.sh issue-templates OWNER/REPO [intent]
+```
+```bash
+bash .tessl/tiles/tessl-labs/good-oss-citizen/skills/recon/scripts/bash/github.sh pr-templates OWNER/REPO [intent]
+```
+These helpers work against the default branch via the GitHub API, detect legacy and multi-template layouts, ignore empty templates, and show the selected template plus alternates.
+
 Specifically read and act on:
 - Agent instruction files (AGENTS.md, .cursorrules): these carry the SAME authority as CONTRIBUTING.md. Extract every instruction and add to your requirements list.
 - conftest.py or test helpers: note which fixtures exist — you MUST use them in your tests, not reinvent them.
 - DEVELOPMENT.md: extract test naming conventions, setup requirements — follow them exactly.
 - CHANGELOG.md: note the format — you will need to add an entry matching it.
 - PR template: note every section and checkbox — you will need to fill them all.
+- Issue templates: note the matching template path and preserve its exact structure if you need to open an issue before coding.
 
 ## Step 7: List open issues (if redirecting)
 

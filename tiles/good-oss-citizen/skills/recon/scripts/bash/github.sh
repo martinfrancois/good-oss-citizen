@@ -3,7 +3,10 @@
 # Tries gh CLI first, falls back to curl for public repos
 #
 # Usage:
-#   github.sh repo-scan <owner/repo>               - Scan repo for policy/convention files
+#   github.sh repo-scan <owner/repo>                - Scan repo for policy/convention files
+#   github.sh issue-templates <owner/repo> [intent] - Detect issue templates on default branch
+#   github.sh pr-templates <owner/repo> [intent]    - Detect PR templates on default branch
+#   github.sh linked-body <owner/repo> <number>     - Get the body of an issue or PR
 #   github.sh issue <owner/repo> <number>           - Get issue details
 #   github.sh issue-comments <owner/repo> <number>  - Get issue comments
 #   github.sh check-claim <owner/repo> <number>     - Check if issue is claimed
@@ -12,7 +15,7 @@
 #   github.sh prs-closed <owner/repo>               - List closed PRs
 #   github.sh pr-history <owner/repo>               - Closed PRs with rejection reasons
 #   github.sh pr-comments <owner/repo> <number>     - Get PR comments
-#   github.sh file <owner/repo> <path>              - Get file contents
+#   github.sh file <owner/repo> <path>              - Get file contents from default branch
 
 set -euo pipefail
 
@@ -39,7 +42,8 @@ case "$COMMAND" in
 import sys, json
 
 tree = json.load(sys.stdin).get('tree', [])
-paths = {item['path'] for item in tree}
+blobs = [item for item in tree if item.get('type') == 'blob']
+paths = {item['path'] for item in blobs}
 
 def check(files, label):
     found = [f for f in files if f in paths]
@@ -47,6 +51,34 @@ def check(files, label):
     print(f'\n=== {label} ===')
     if found: print(f'FOUND: {\", \".join(found)}')
     if missing: print(f'NOT FOUND: {\", \".join(missing)}')
+
+def nonempty(item):
+    return item.get('size', 0) > 0
+
+def issue_template_candidate(path):
+    lower = path.lower()
+    if lower in {'.github/issue_template/config.yml', '.github/issue_template/config.yaml'}:
+        return False
+    return (
+        (lower.startswith('.github/issue_template/') and lower.endswith(('.md', '.yml', '.yaml'))) or
+        lower == '.github/issue_template.md' or
+        lower == 'issue_template.md'
+    )
+
+issue_templates = sorted({
+    item['path'] for item in blobs
+    if nonempty(item) and issue_template_candidate(item['path'])
+})
+
+pr_templates = sorted({
+    item['path'] for item in blobs
+    if nonempty(item) and (
+        item['path'].lower() == '.github/pull_request_template.md' or
+        item['path'].lower().startswith('.github/pull_request_template/') or
+        item['path'].lower() == 'docs/pull_request_template.md' or
+        item['path'].lower() == 'pull_request_template.md'
+    )
+})
 
 check([
     'CONTRIBUTING.md', 'AI_POLICY.md', 'CODE_OF_CONDUCT.md',
@@ -65,15 +97,17 @@ check([
     '.golangci.yml', 'Cargo.toml', 'go.mod'
 ], 'Convention Files')
 
-check([
-    '.github/PULL_REQUEST_TEMPLATE.md',
-], 'PR Templates')
+print(f'\n=== PR Templates ===')
+if pr_templates:
+    print(f'FOUND: {\", \".join(pr_templates)}')
+else:
+    print('NOT FOUND: no non-empty PR templates detected in supported locations')
 
-# Check for issue templates directory
-issue_templates = [p for p in paths if p.startswith('.github/ISSUE_TEMPLATE')]
+print(f'\n=== Issue Templates ===')
 if issue_templates:
-    print(f'\n=== Issue Templates ===')
     print(f'FOUND: {\", \".join(issue_templates)}')
+else:
+    print('NOT FOUND: no non-empty issue templates detected in supported locations')
 
 # Check for test fixtures
 fixtures = [p for p in paths if 'conftest.py' in p or 'test_helper' in p or 'testutil' in p]
@@ -91,6 +125,190 @@ workflows = [p for p in paths if p.startswith('.github/workflows/')]
 if workflows:
     print(f'\n=== CI Workflows ===')
     print(f'FOUND: {\", \".join(workflows)}')
+"
+        ;;
+    issue-templates)
+        DEFAULT_BRANCH=$(fetch "/repos/${REPO}" | python3 -c "import sys,json; print(json.load(sys.stdin)['default_branch'])")
+        BRANCH_SHA=$(fetch "/repos/${REPO}/git/refs/heads/${DEFAULT_BRANCH}" | python3 -c "import sys,json; print(json.load(sys.stdin)['object']['sha'])")
+        INTENT="${ARG:-}"
+        export INTENT
+        CANDIDATES=$(fetch "/repos/${REPO}/git/trees/${BRANCH_SHA}?recursive=1" | python3 -c '
+import os, sys, json
+
+intent = os.environ.get("INTENT", "").lower()
+tree = json.load(sys.stdin).get("tree", [])
+blobs = [item for item in tree if item.get("type") == "blob" and item.get("size", 0) > 0]
+
+def issue_template_candidate(path):
+    lower = path.lower()
+    if lower in {".github/issue_template/config.yml", ".github/issue_template/config.yaml"}:
+        return False
+    return (
+        (lower.startswith(".github/issue_template/") and lower.endswith((".md", ".yml", ".yaml"))) or
+        lower == ".github/issue_template.md" or
+        lower == "issue_template.md"
+    )
+
+def priority(path):
+    lower = path.lower()
+    if lower.startswith(".github/issue_template/"):
+        return 0
+    if lower == ".github/issue_template.md":
+        return 1
+    if lower == "issue_template.md":
+        return 2
+    return 99
+
+def score(path):
+    lower = path.lower()
+    score = 0
+    if not intent:
+        if any(token in lower for token in ["blank", "default", "general", "generic", "other"]):
+            score += 2
+        return score
+    if intent in {"bug", "bugfix", "fix"} and any(token in lower for token in ["bug", "defect", "incident"]):
+        score += 10
+    if intent in {"feature", "enhancement", "request"} and any(token in lower for token in ["feature", "enhancement", "request", "proposal"]):
+        score += 10
+    if intent in {"question", "support"} and any(token in lower for token in ["question", "support", "help"]):
+        score += 10
+    if any(token in lower for token in [intent, intent.replace(" ", "-")]):
+        score += 6
+    if any(token in lower for token in ["blank", "default", "general", "generic", "other"]):
+        score += 2
+    return score
+
+templates = sorted({
+    item["path"] for item in blobs
+    if issue_template_candidate(item["path"])
+}, key=lambda p: (priority(p), p.lower()))
+
+selected = None
+if templates:
+    ranked = sorted(templates, key=lambda p: (-score(p), priority(p), p.lower()))
+    selected = ranked[0]
+
+for path in templates:
+    marker = "SELECTED" if path == selected else "CANDIDATE"
+    print(f"{marker}\t{path}")
+')
+
+        if [ -z "$CANDIDATES" ]; then
+            echo "No non-empty issue templates found on the default branch."
+            exit 0
+        fi
+
+        echo "=== Issue Templates ==="
+        echo "Default branch: ${DEFAULT_BRANCH}"
+        if [ -n "$INTENT" ]; then
+            echo "Intent hint: ${INTENT}"
+        fi
+
+        while IFS=$'\t' read -r KIND TEMPLATE_PATH; do
+            [ -z "$TEMPLATE_PATH" ] && continue
+            echo ""
+            echo "--- ${KIND}: ${TEMPLATE_PATH} ---"
+            fetch "/repos/${REPO}/contents/${TEMPLATE_PATH}?ref=${DEFAULT_BRANCH}" | python3 -c '
+import sys, json, base64
+print(base64.b64decode(json.load(sys.stdin)["content"]).decode("utf-8"))
+'
+        done <<< "$CANDIDATES"
+        ;;
+    pr-templates)
+        DEFAULT_BRANCH=$(fetch "/repos/${REPO}" | python3 -c "import sys,json; print(json.load(sys.stdin)['default_branch'])")
+        BRANCH_SHA=$(fetch "/repos/${REPO}/git/refs/heads/${DEFAULT_BRANCH}" | python3 -c "import sys,json; print(json.load(sys.stdin)['object']['sha'])")
+        INTENT="${ARG:-}"
+        export INTENT
+        CANDIDATES=$(fetch "/repos/${REPO}/git/trees/${BRANCH_SHA}?recursive=1" | python3 -c '
+import os, sys, json
+
+intent = os.environ.get("INTENT", "").lower()
+tree = json.load(sys.stdin).get("tree", [])
+blobs = [item for item in tree if item.get("type") == "blob" and item.get("size", 0) > 0]
+
+def priority(path):
+    lower = path.lower()
+    if lower == ".github/pull_request_template.md":
+        return 0
+    if lower.startswith(".github/pull_request_template/"):
+        return 1
+    if lower == "docs/pull_request_template.md":
+        return 2
+    if lower == "pull_request_template.md":
+        return 3
+    return 99
+
+def score(path):
+    lower = path.lower()
+    score = 0
+    if not intent:
+        return score
+    if intent in {"bug", "bugfix", "fix"} and any(token in lower for token in ["bug", "fix", "hotfix"]):
+        score += 10
+    if intent in {"feature", "enhancement"} and any(token in lower for token in ["feature", "enhancement"]):
+        score += 10
+    if intent in {"docs", "documentation"} and "doc" in lower:
+        score += 10
+    if intent in {"test", "tests"} and "test" in lower:
+        score += 10
+    if any(token in lower for token in [intent, intent.replace(" ", "-")]):
+        score += 6
+    return score
+
+templates = sorted({
+    item["path"] for item in blobs
+    if (
+        item["path"].lower() == ".github/pull_request_template.md" or
+        item["path"].lower().startswith(".github/pull_request_template/") or
+        item["path"].lower() == "docs/pull_request_template.md" or
+        item["path"].lower() == "pull_request_template.md"
+    )
+}, key=lambda p: (priority(p), p.lower()))
+
+selected = None
+if templates:
+    ranked = sorted(templates, key=lambda p: (-score(p), priority(p), p.lower()))
+    selected = ranked[0]
+
+for path in templates:
+    marker = "SELECTED" if path == selected else "CANDIDATE"
+    print(f"{marker}\t{path}")
+')
+
+        if [ -z "$CANDIDATES" ]; then
+            echo "No non-empty PR templates found on the default branch."
+            exit 0
+        fi
+
+        echo "=== PR Templates ==="
+        echo "Default branch: ${DEFAULT_BRANCH}"
+        if [ -n "$INTENT" ]; then
+            echo "Intent hint: ${INTENT}"
+        fi
+
+        while IFS=$'\t' read -r KIND TEMPLATE_PATH; do
+            [ -z "$TEMPLATE_PATH" ] && continue
+            echo ""
+            echo "--- ${KIND}: ${TEMPLATE_PATH} ---"
+            fetch "/repos/${REPO}/contents/${TEMPLATE_PATH}?ref=${DEFAULT_BRANCH}" | python3 -c '
+import sys, json, base64
+print(base64.b64decode(json.load(sys.stdin)["content"]).decode("utf-8"))
+'
+        done <<< "$CANDIDATES"
+        ;;
+    linked-body)
+        fetch "/repos/${REPO}/issues/${ARG}" | python3 -c "
+import sys, json
+
+d = json.load(sys.stdin)
+kind = 'pull_request' if d.get('pull_request') else 'issue'
+print('=== Linked Body ===')
+print(f\"Kind: {kind}\")
+print(f\"Number: {d['number']}\")
+print(f\"Title: {d['title']}\")
+print(f\"State: {d['state']}\")
+print(f\"URL: {d['html_url']}\")
+print(f\"\n{d.get('body') or ''}\")
 "
         ;;
     issue)
@@ -262,7 +480,8 @@ else:
 "
         ;;
     file)
-        fetch "/repos/${REPO}/contents/${ARG}" | python3 -c "
+        DEFAULT_BRANCH=$(fetch "/repos/${REPO}" | python3 -c "import sys,json; print(json.load(sys.stdin)['default_branch'])")
+        fetch "/repos/${REPO}/contents/${ARG}?ref=${DEFAULT_BRANCH}" | python3 -c "
 import sys, json, base64
 d = json.load(sys.stdin)
 print(base64.b64decode(d['content']).decode('utf-8'))
@@ -685,7 +904,10 @@ except:
         echo "Usage: $0 <command> <owner/repo> [args]"
         echo ""
         echo "Commands:"
-        echo "  repo-scan <owner/repo>               Scan repo for policy/convention files"
+        echo "  repo-scan <owner/repo>                Scan repo for policy/convention files"
+        echo "  issue-templates <owner/repo> [intent] Detect issue templates on default branch"
+        echo "  pr-templates <owner/repo> [intent]    Detect PR templates on default branch"
+        echo "  linked-body <owner/repo> <number>     Get the body of an issue or PR"
         echo "  issue <owner/repo> <number>           Get issue details + labels + assignee"
         echo "  issue-comments <owner/repo> <number>  Get all comments on an issue"
         echo "  check-claim <owner/repo> <number>     DEPRECATED: use issue-comments instead"
