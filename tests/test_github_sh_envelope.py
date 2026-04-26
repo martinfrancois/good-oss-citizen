@@ -28,7 +28,15 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-GITHUB_SH = REPO_ROOT / "tiles" / "good-oss-citizen" / "skills" / "recon" / "scripts" / "bash" / "github.sh"
+SCRIPT_DIR = REPO_ROOT / "tiles" / "good-oss-citizen" / "skills" / "recon" / "scripts" / "bash"
+GITHUB_SH = SCRIPT_DIR / "github.sh"
+sys.path.insert(0, str(SCRIPT_DIR))
+from _templates import (  # noqa: E402
+    ISSUE_TEMPLATE_DIR,
+    ISSUE_TEMPLATE_LEGACY_PATHS,
+    issue_template_dir_paths,
+    is_issue_template_config_path,
+)
 
 # (command-name, args-template, expected-ok). args-template uses {repo} and
 # {issue_number}/{pr_number}/{file_path} placeholders.
@@ -56,6 +64,43 @@ COMMANDS = [
     ("templates-issue", ["{repo}"], True),
     ("templates-pr", ["{repo}"], True),
 ]
+
+
+def assert_issue_template_config_excluded() -> None:
+    """Regression guard: GitHub config.yml is not an issue template body."""
+    assert ISSUE_TEMPLATE_DIR == ".github/ISSUE_TEMPLATE/"
+    assert ISSUE_TEMPLATE_LEGACY_PATHS == (".github/ISSUE_TEMPLATE.md", "ISSUE_TEMPLATE.md")
+    assert is_issue_template_config_path(f"{ISSUE_TEMPLATE_DIR}config.yml")
+    assert is_issue_template_config_path(f"{ISSUE_TEMPLATE_DIR}config.yaml")
+    assert not is_issue_template_config_path(f"{ISSUE_TEMPLATE_DIR}bug.yml")
+
+    paths = {
+        f"{ISSUE_TEMPLATE_DIR}config.yml",
+        f"{ISSUE_TEMPLATE_DIR}config.yaml",
+        f"{ISSUE_TEMPLATE_DIR}bug.yml",
+        f"{ISSUE_TEMPLATE_DIR}feature.md",
+        f"{ISSUE_TEMPLATE_DIR}note.txt",
+    }
+    if issue_template_dir_paths(paths) != [
+        f"{ISSUE_TEMPLATE_DIR}bug.yml",
+        f"{ISSUE_TEMPLATE_DIR}feature.md",
+        f"{ISSUE_TEMPLATE_DIR}note.txt",
+    ]:
+        raise AssertionError("issue_template_dir_paths must exclude config files only")
+
+    if issue_template_dir_paths(paths, extensions=(".md", ".yml", ".yaml")) != [
+        f"{ISSUE_TEMPLATE_DIR}bug.yml",
+        f"{ISSUE_TEMPLATE_DIR}feature.md",
+    ]:
+        raise AssertionError("issue_template_dir_paths must apply extension filters after config exclusion")
+
+    source = GITHUB_SH.read_text()
+    uses = source.count("issue_template_dir_paths(")
+    if uses < 2:
+        raise AssertionError(
+            "github.sh must use the shared issue-template helper in both "
+            f"repo-scan and templates-issue discovery (found {uses} uses)"
+        )
 
 
 def run(cmd_name: str, args: list[str]) -> tuple[int, str]:
@@ -115,6 +160,13 @@ def main() -> int:
     if not GITHUB_SH.is_file():
         print(f"FAIL: github.sh not found at {GITHUB_SH}", file=sys.stderr)
         return 2
+
+    try:
+        assert_issue_template_config_excluded()
+        print("PASS static-regression (ISSUE_TEMPLATE config.yml excluded)")
+    except AssertionError as e:
+        print(f"FAIL static-regression: {e}", file=sys.stderr)
+        return 1
 
     placeholders = {
         "repo": args.repo,

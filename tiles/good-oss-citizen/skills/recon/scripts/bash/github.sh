@@ -29,6 +29,7 @@ case "$COMMAND" in
         REPO="$REPO" python3 <<'PYEOF'
 import os
 from _envelope import emit, fail, fetch_json
+from _templates import ISSUE_TEMPLATE_LEGACY_PATHS, issue_template_dir_paths
 
 REPO = os.environ["REPO"]
 CMD = "repo-scan"
@@ -85,8 +86,8 @@ pr_templates_found = [p for p in pr_template_singles if p in paths] + pr_dir
 # `.github/ISSUE_TEMPLATE.md` is the single-file legacy form. Match the
 # directory with a trailing slash so the legacy single file isn't
 # double-counted.
-issue_dir = sorted(p for p in paths if p.startswith(".github/ISSUE_TEMPLATE/"))
-issue_legacy = [p for p in (".github/ISSUE_TEMPLATE.md", "ISSUE_TEMPLATE.md") if p in paths]
+issue_dir = issue_template_dir_paths(paths)
+issue_legacy = [p for p in ISSUE_TEMPLATE_LEGACY_PATHS if p in paths]
 issue_templates_found = issue_dir + issue_legacy
 
 emit(CMD, {
@@ -802,6 +803,7 @@ PYEOF
 import base64
 import os
 from _envelope import emit, fail, fetch_json
+from _templates import ISSUE_TEMPLATE_LEGACY_PATHS, issue_template_dir_paths
 
 REPO = os.environ["REPO"]
 repo_meta = fetch_json(f"/repos/{REPO}")
@@ -825,12 +827,8 @@ paths = [
     if item.get("type") == "blob"
 ]
 
-dir_templates = sorted(
-    p for p in paths
-    if p.startswith(".github/ISSUE_TEMPLATE/")
-    and (p.endswith(".md") or p.endswith(".yml") or p.endswith(".yaml"))
-)
-legacy = [p for p in (".github/ISSUE_TEMPLATE.md", "ISSUE_TEMPLATE.md") if p in paths]
+dir_templates = issue_template_dir_paths(paths, extensions=(".md", ".yml", ".yaml"))
+legacy = [p for p in ISSUE_TEMPLATE_LEGACY_PATHS if p in paths]
 ordered = dir_templates if dir_templates else legacy
 
 if not ordered:
