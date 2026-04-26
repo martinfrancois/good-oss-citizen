@@ -1,0 +1,56 @@
+{
+  "context": "This eval focuses on the new template-compliance workflow for an existing PULL REQUEST body. The target is good-oss-citizen/demo-streamqueue PR #8. The repo has a single PR template at .github/PULL_REQUEST_TEMPLATE.md with sections Summary, Related Issue, Type of Change, AI Assistance, Testing, Checklist. PR #8 has Summary, Related Issue, Type of Change, Testing, and Checklist, but it omits the AI Assistance section entirely and only retains one Testing checkbox and one Checklist checkbox. The correct behavior is to fetch the existing PR body with the new body command, compare against the PR template, classify the body as a Significant deviation or a clearly serious template deviation, and draft a human-reviewed comment asking the author to update the PR body against the template rather than listing every missing checkbox.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Uses template-compliance flow for existing PR body",
+      "max_score": 8,
+      "description": "The agent treats the task as checking an already-existing PR body against the repo's PR template, not as preparing a new PR, reviewing code correctness, or editing template files. Strong evidence is visible in the final answer when it applies template-compliance concepts and references PR #8; do not require hidden tool-call or activation telemetry."
+    },
+    {
+      "name": "Fetches PR template and existing PR body",
+      "max_score": 12,
+      "description": "The final answer or visible transcript shows the agent used both the repo's PR template and the existing PR body for #8. Strong final-answer evidence includes naming the PR template's sections/items and accurately distinguishing them from the PR body's populated/missing sections. If tool-call evidence is visible, ideal commands are `github.sh templates-pr good-oss-citizen/demo-streamqueue` and `github.sh body good-oss-citizen/demo-streamqueue 8`, but do not require hidden tool-call telemetry. This specifically exercises the new `body` command's pull_request classification path."
+    },
+    {
+      "name": "Selects .github/PULL_REQUEST_TEMPLATE.md",
+      "max_score": 6,
+      "description": "The agent compares PR #8 against `.github/PULL_REQUEST_TEMPLATE.md`. It does not use issue templates, invent a PR structure, or ignore the template because the PR is already closed."
+    },
+    {
+      "name": "Classifies as Significant deviation or serious template deviation",
+      "max_score": 10,
+      "description": "The agent does not call the PR body a match. It reports `Significant deviation` or clearly equivalent wording because a required AI Assistance section is missing and multiple required checklist/template items were stripped. Slight deviation is at most partial credit."
+    },
+    {
+      "name": "Identifies missing AI Assistance as a primary compliance gap",
+      "max_score": 12,
+      "description": "The agent explicitly identifies the missing AI Assistance section / Tool / Used for / Human-verified fields as a primary template compliance gap. This must be framed as a body/template gap, not as a judgment about whether AI was actually used."
+    },
+    {
+      "name": "Recognizes stripped Testing and Checklist items without over-listing",
+      "max_score": 8,
+      "description": "The agent notices that the PR body retained only a subset of the Testing and Checklist items from the template. For a Significant deviation, it should summarize this as stripped template checklist/testing items rather than producing a long nit list of every checkbox."
+    },
+    {
+      "name": "Does not ask for information already present",
+      "max_score": 6,
+      "description": "The agent does not ask the author to add Summary, Related Issue, Type of Change, Testing, or Checklist headings generically, because those headings are already present. It focuses on restoring/filling the missing or stripped template-required parts."
+    },
+    {
+      "name": "Drafts a concise comment with template link and no posting",
+      "max_score": 10,
+      "description": "The output includes a concise suggested comment for human review, does not post it, uses the word `template`, and includes a direct GitHub blob URL to `.github/PULL_REQUEST_TEMPLATE.md` because the comment asks the author to update the body against the template."
+    },
+    {
+      "name": "Separates template compliance from code/review merits",
+      "max_score": 4,
+      "description": "The agent does not evaluate whether PR #8's technical approach is correct, whether it should have been merged, or whether dropping oldest messages is a good fix. The task is body-template compliance only."
+    },
+    {
+      "name": "Does not modify repository files or templates",
+      "max_score": 4,
+      "description": "The agent does not create, edit, or propose changes to `.github/PULL_REQUEST_TEMPLATE.md` or any project source files. This is a body-compliance review only."
+    }
+  ]
+}

@@ -4,6 +4,15 @@ All notable changes to the `good-oss-citizen` tile are recorded here. The format
 
 ## [Unreleased]
 
+### Added — Template compliance body checks
+
+- New `template-compliance` skill checks already-open issue/PR bodies and local pre-submission body files (`issue_body.md` / `pr_description.md`) against the host repository's detected templates, with body-local evidence rules, checkbox/field alignment rules, internal-consistency checks, reusable example expectations, pinned OpenClaw fixture snapshots, and maintainer-friendly suggested fixes.
+- `propose` and `preflight` now use the template-compliance rubric as final verification for generated issue and PR bodies before handoff.
+- Template-compliance examples now cover OpenClaw-style removable prompt text, retained helper instructions, required fillable labels such as `- OS:`, and required Yes/No fields including accepted, empty, placeholder, and invalid answers.
+- New `github.sh body` command fetches issue or pull request bodies as JSON envelopes and classifies them as `issue` or `pull_request`.
+- New eval scenarios cover already-existing issue and PR body template-compliance checks, including `github.sh body`, missing issue Environment fields, missing PR AI Assistance fields, and human-reviewed suggested comments without posting to GitHub.
+- Added a synthetic eval for subtle body-internal consistency checks: a PR body fills Compatibility / Migration as backward compatible while an earlier summary line calls a concrete API replacement a breaking change, expecting a manual-check signal rather than a template-rewrite request.
+
 ## [1.1.0] — 2026-04-26
 
 ### Changed — github.sh emits JSON envelopes (closes #13)

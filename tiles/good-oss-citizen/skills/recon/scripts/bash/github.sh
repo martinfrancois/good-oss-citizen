@@ -132,6 +132,29 @@ emit("issue", {
 PYEOF
         ;;
 
+    body)
+        REPO="$REPO" ARG="$ARG" python3 <<'PYEOF'
+import os
+from _envelope import emit, fail, fetch_json
+
+REPO = os.environ["REPO"]
+ARG = os.environ["ARG"]
+d = fetch_json(f"/repos/{REPO}/issues/{ARG}")
+if not d or "number" not in d:
+    fail("body", f"could not fetch issue or pull request {ARG} from {REPO}")
+
+kind = "pull_request" if d.get("pull_request") else "issue"
+emit("body", {
+    "kind": kind,
+    "number": d["number"],
+    "title": d.get("title", ""),
+    "state": d.get("state", ""),
+    "url": d.get("html_url", ""),
+    "body": d.get("body") or "",
+})
+PYEOF
+        ;;
+
     issue-comments|pr-comments)
         REPO="$REPO" ARG="$ARG" CMD="$COMMAND" python3 <<'PYEOF'
 import os
@@ -977,7 +1000,7 @@ from _envelope import emit
 
 cmd = os.environ.get("CMD", "")
 available = [
-    "repo-scan", "issue", "issue-comments", "check-claim",
+    "repo-scan", "issue", "body", "issue-comments", "check-claim",
     "issues-open", "issues-closed", "prs-closed", "pr-history",
     "related-prs", "pr-comments", "file", "commit-conventions",
     "branch-conventions", "ai-policy", "disclosure-format",

@@ -98,7 +98,7 @@ def fetch(endpoint):
         # Curl gets the same authenticated 5000-req/hr limit as gh when a
         # token is in the env. Without this, environments without gh fall
         # back to the 60-req/hr unauthenticated public limit and the
-        # 22-command smoke test would race the limit.
+        # command sweep smoke test would race the limit.
         curl_cmd += ["-H", f"Authorization: Bearer {token}"]
     curl_cmd += [f"{API}{endpoint}"]
 
