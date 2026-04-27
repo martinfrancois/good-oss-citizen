@@ -73,7 +73,8 @@ Before responding, write `triage_comment.md` in the workspace root. This file is
 2. The classification bucket from Step 4, when a template exists.
 3. The suggested comment from Step 5 (or `No comment needed`).
 4. Any `Things to check manually` items as a separate optional snippet section.
-5. If the user asked you to post, an explicit note that you did not post to GitHub and that the human must review and post the comment themselves if they approve it.
+5. An `AI Disclosure` section for the durable artifact itself. Keep it outside the suggested comment unless the host repository's policy requires disclosure in the public comment.
+6. If the user asked you to post, an explicit note that you did not post to GitHub and that the human must review and post the comment themselves if they approve it.
 
 Present the same handoff to the user:
 

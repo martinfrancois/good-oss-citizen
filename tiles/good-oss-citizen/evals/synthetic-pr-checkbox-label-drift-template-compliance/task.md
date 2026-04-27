@@ -1,6 +1,10 @@
-# Check a pull request body with edited checkbox labels
+# Read this open pull request before review
 
-I'm triaging an open pull request. The repository's pull request template and the open PR body are below. Tell me whether the body follows the template and whether I should ask the contributor to revise it. Do not post anything to GitHub.
+I'm triaging an open pull request. The repository's pull request template and the open PR body are below. Take a look and tell me what you make of it. Do not post anything to GitHub.
+
+Repository: `https://github.com/example/retry-worker`
+Default branch: `main`
+Template path: `.github/PULL_REQUEST_TEMPLATE.md`
 
 ## The repository's pull request template
 

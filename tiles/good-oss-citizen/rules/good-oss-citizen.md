@@ -31,7 +31,7 @@ Use these exact filenames in the workspace root (no subdirectory):
 
 ### AI disclosure is mandatory in every such artifact
 
-Every one of these files MUST include an AI disclosure section — no exceptions, including for issues, discussions, redirect reports, and bans. If the project requires AI disclosure, use their exact format. If the project has no AI policy, include voluntary disclosure: "**AI Disclosure:** This [PR / issue / redirect plan] was prepared with the assistance of [tool name]. [What was AI-assisted vs. human-written.] All content was reviewed by the human contributor before submission." A `Co-Authored-By` trailer is NOT a substitute for a prose AI disclosure section.
+Every one of these files MUST include an AI disclosure section — no exceptions, including for issues, triage comments, discussions, redirect reports, and bans. If the project requires AI disclosure, use their exact format. If the project has no AI policy, include voluntary disclosure: "**AI Disclosure:** This [PR / issue / triage comment / redirect plan] was prepared with the assistance of [tool name]. [What was AI-assisted vs. human-written.] All content was reviewed by the human contributor before submission." A `Co-Authored-By` trailer is NOT a substitute for a prose AI disclosure section.
 
 Voluntary AI disclosure must render as normal Markdown/prose. Do not put voluntary disclosure inside triple-backtick fences or any other code block. A fenced voluntary disclosure is wrong because it renders as code rather than as contributor-readable issue or PR content. Only use a fenced disclosure when the target repository's explicit AI policy declares a code-block disclosure format.
 
@@ -55,7 +55,7 @@ When filing an issue or opening a PR, fetch the target repo's templates first (`
 
 ## Triage existing issue/PR bodies against the template
 
-When the user asks whether an already-open issue or pull request body follows the repository's template, fetch the body and matching templates with `body OWNER/REPO NUMBER` + `templates-issue` / `templates-pr` and apply `skills/preflight/body-template-compliance-rubric.md`. The full triage workflow lives in `skills/triage/SKILL.md` — these are the always-on guardrails that apply even if no skill activates:
+When the user asks whether an already-open issue or pull request body follows the repository's template, fetch the body and matching templates with `body OWNER/REPO NUMBER` + `templates-issue` / `templates-pr` and apply `skills/preflight/body-template-compliance-rubric.md`. If the user or eval fixture already provides both the template and body inline, evaluate that supplied content directly instead of fetching; use any supplied repository/default-branch/template-path metadata only to construct the blob URL. The full triage workflow lives in `skills/triage/SKILL.md` — these are the always-on guardrails that apply even if no skill activates:
 
 - Name the selected template path in the response.
 - Report exactly one main result label: `Result: Matches well enough`, `Result: Slight deviation`, or `Result: Significant deviation` — never replace it with mild prose like "missing a few sections".
