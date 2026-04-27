@@ -37,7 +37,7 @@ Compare the PR's diff against typical PR size from recon findings:
 
 ## Check 3: PR template compliance
 
-Fetch the target repo's PR templates — do not rely on recon notes, and do not guess the path. Then apply `skills/template-compliance/references/body-template-compliance-rubric.md` as the final verification rubric for `pr_description.md`:
+Fetch the target repo's PR templates — do not rely on recon notes, and do not guess the path. Then apply `skills/preflight/body-template-compliance-rubric.md` as the final verification rubric for `pr_description.md`:
 
 ```bash
 bash .tessl/tiles/tessl-labs/good-oss-citizen/skills/recon/scripts/bash/github.sh templates-pr OWNER/REPO

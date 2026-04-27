@@ -11,13 +11,6 @@ on:
       - main
     paths:
       - 'tiles/good-oss-citizen/skills/recon/scripts/bash/**'
-      - 'tiles/good-oss-citizen/skills/template-compliance/**'
-      - 'tiles/good-oss-citizen/evals/**'
-      - 'tiles/good-oss-citizen/skills/preflight/SKILL.md'
-      - 'tiles/good-oss-citizen/skills/propose/SKILL.md'
-      - 'tiles/good-oss-citizen/rules/good-oss-citizen.md'
-      - 'tiles/good-oss-citizen/README.md'
-      - 'tiles/good-oss-citizen/tile.json'
       - 'tests/**'
       - '.github/workflows/test.yml'
   push:
@@ -25,13 +18,6 @@ on:
       - main
     paths:
       - 'tiles/good-oss-citizen/skills/recon/scripts/bash/**'
-      - 'tiles/good-oss-citizen/skills/template-compliance/**'
-      - 'tiles/good-oss-citizen/evals/**'
-      - 'tiles/good-oss-citizen/skills/preflight/SKILL.md'
-      - 'tiles/good-oss-citizen/skills/propose/SKILL.md'
-      - 'tiles/good-oss-citizen/rules/good-oss-citizen.md'
-      - 'tiles/good-oss-citizen/README.md'
-      - 'tiles/good-oss-citizen/tile.json'
       - 'tests/**'
       - '.github/workflows/test.yml'
 
@@ -45,9 +31,6 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - name: Run static template-compliance tests
-        run: python3 tests/test_template_compliance_static.py
-
       - name: Run envelope smoke test
         # Pin every fixture explicitly so the CI run is deterministic per
         # `rules/testing-standards.md`. No auto-discovery — auto-discovery

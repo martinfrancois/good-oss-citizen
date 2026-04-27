@@ -104,7 +104,7 @@ The helper commands emit JSON envelopes (see `skills/recon/SKILL.md` for the con
 
 When Step 4 returned one or more templates, follow these rules. Then proceed to Step 6.
 
-Before writing the body file, read `skills/template-compliance/references/body-template-compliance-rubric.md` and use it as the final verification rubric for `issue_body.md` / `pr_description.md`. For these local pre-submission body files, the action is to fix the file, not to draft public comments.
+Before writing the body file, read `skills/preflight/body-template-compliance-rubric.md` and use it as the final verification rubric for `issue_body.md` / `pr_description.md`. For these local pre-submission body files, the action is to fix the file, not to draft public comments.
 
 - **Pick the best match for intent.** For issues: bug report vs. feature request vs. generic — prefer the most specific; fall back to generic if none fit cleanly. Ignore `.github/ISSUE_TEMPLATE/config.yml` / `config.yaml` because it configures GitHub issue forms; it is not a submission template. For PRs: match on change type (fix / feat / docs) via filename or title; if none match, use the first listed.
 - **Preserve structure.** Fill the template's existing headings and sections. Do not strip, reorder, or rename sections.

@@ -18,9 +18,6 @@
     },
     "preflight": {
       "path": "skills/preflight/SKILL.md"
-    },
-    "template-compliance": {
-      "path": "skills/template-compliance/SKILL.md"
     }
   }
 }

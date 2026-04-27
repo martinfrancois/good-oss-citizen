@@ -4,14 +4,13 @@ All notable changes to the `good-oss-citizen` tile are recorded here. The format
 
 ## [Unreleased]
 
-### Added — Template compliance body checks
+### Added — Body / template compliance rubric
 
-- New `template-compliance` skill checks already-open issue/PR bodies and local pre-submission body files (`issue_body.md` / `pr_description.md`) against the host repository's detected templates, with body-local evidence rules, checkbox/field alignment rules, internal-consistency checks, reusable example expectations, pinned OpenClaw fixture snapshots, and maintainer-friendly suggested fixes.
-- `propose` and `preflight` now use the template-compliance rubric as final verification for generated issue and PR bodies before handoff.
-- Template-compliance examples now cover OpenClaw-style removable prompt text, retained helper instructions, required fillable labels such as `- OS:`, and required Yes/No fields including accepted, empty, placeholder, and invalid answers.
-- New `github.sh body` command fetches issue or pull request bodies as JSON envelopes and classifies them as `issue` or `pull_request`.
-- New eval scenarios cover already-existing issue and PR body template-compliance checks, including `github.sh body`, missing issue Environment fields, missing PR AI Assistance fields, and human-reviewed suggested comments without posting to GitHub.
-- Added a synthetic eval for subtle body-internal consistency checks: a PR body fills Compatibility / Migration as backward compatible while an earlier summary line calls a concrete API replacement a breaking change, expecting a manual-check signal rather than a template-rewrite request.
+- New `skills/preflight/body-template-compliance-rubric.md` defines how to grade an issue or PR body against the host repository's template — body-local evidence rule, content-equivalent answers, checkbox / option-list alignment, YAML form field rules, internal-consistency manual checks, output buckets (`Matches well enough` / `Slight deviation` / `Significant deviation` / `Things to check manually`), and a polite-comment template that says `template`, never `form`.
+- `preflight` Check 3 (PR template compliance) and `propose` Step 5 (Apply the template rules) now reference the rubric for final verification of `pr_description.md` / `issue_body.md` before handoff.
+- New `github.sh body` command fetches an issue or pull request body as a JSON envelope and classifies it as `issue` or `pull_request` (23rd helper command).
+- New eval scenarios: `streamqueue-existing-issue-template-compliance`, `streamqueue-existing-pr-template-compliance`, and `synthetic-pr-subtle-breaking-change-template-compliance`. The synthetic case checks a body whose Compatibility / Migration section says "backward compatible" while a Summary line earlier in the same body describes a concrete breaking API replacement — the expected behavior is `Matches well enough` with a manual-check entry, not a rewrite request.
+- Synthetic PR-template fixtures live under `evals/fixtures/synthetic-pr-template/` so they're scoped to the eval domain rather than checked-in skill content.
 
 ## [1.1.0] — 2026-04-26
 
