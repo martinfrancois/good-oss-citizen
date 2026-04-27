@@ -31,12 +31,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_DIR = REPO_ROOT / "tiles" / "good-oss-citizen" / "skills" / "recon" / "scripts" / "bash"
 GITHUB_SH = SCRIPT_DIR / "github.sh"
 sys.path.insert(0, str(SCRIPT_DIR))
-from _templates import (  # noqa: E402
-    ISSUE_TEMPLATE_DIR,
-    ISSUE_TEMPLATE_LEGACY_PATHS,
-    issue_template_dir_paths,
-    is_issue_template_config_path,
-)
+from _templates import issue_template_dir_paths  # noqa: E402
 
 # (command-name, args-template, expected-ok). args-template uses {repo} and
 # {issue_number}/{pr_number}/{file_path} placeholders.
@@ -67,40 +62,31 @@ COMMANDS = [
 
 
 def assert_issue_template_config_excluded() -> None:
-    """Regression guard: GitHub config.yml is not an issue template body."""
-    assert ISSUE_TEMPLATE_DIR == ".github/ISSUE_TEMPLATE/"
-    assert ISSUE_TEMPLATE_LEGACY_PATHS == (".github/ISSUE_TEMPLATE.md", "ISSUE_TEMPLATE.md")
-    assert is_issue_template_config_path(f"{ISSUE_TEMPLATE_DIR}config.yml")
-    assert is_issue_template_config_path(f"{ISSUE_TEMPLATE_DIR}config.yaml")
-    assert not is_issue_template_config_path(f"{ISSUE_TEMPLATE_DIR}bug.yml")
+    """Regression guard: GitHub's chooser-config files are not template bodies.
 
+    Behavioral check on the shared filter — `repo-scan` and
+    `templates-issue` both call it, so verifying the filter is enough.
+    A future refactor that unwires the helper from one caller is caught
+    by the live `repo-scan` / `templates-issue` exercise in the smoke
+    test against the upstream repo, not by source-text counting here.
+    """
     paths = {
-        f"{ISSUE_TEMPLATE_DIR}config.yml",
-        f"{ISSUE_TEMPLATE_DIR}config.yaml",
-        f"{ISSUE_TEMPLATE_DIR}bug.yml",
-        f"{ISSUE_TEMPLATE_DIR}feature.md",
-        f"{ISSUE_TEMPLATE_DIR}note.txt",
+        ".github/ISSUE_TEMPLATE/config.yml",
+        ".github/ISSUE_TEMPLATE/config.yaml",
+        ".github/ISSUE_TEMPLATE/bug.yml",
+        ".github/ISSUE_TEMPLATE/feature.md",
+        ".github/ISSUE_TEMPLATE/note.txt",
     }
-    if issue_template_dir_paths(paths) != [
-        f"{ISSUE_TEMPLATE_DIR}bug.yml",
-        f"{ISSUE_TEMPLATE_DIR}feature.md",
-        f"{ISSUE_TEMPLATE_DIR}note.txt",
-    ]:
-        raise AssertionError("issue_template_dir_paths must exclude config files only")
+    assert issue_template_dir_paths(paths) == [
+        ".github/ISSUE_TEMPLATE/bug.yml",
+        ".github/ISSUE_TEMPLATE/feature.md",
+        ".github/ISSUE_TEMPLATE/note.txt",
+    ], "issue_template_dir_paths must exclude config files only"
 
-    if issue_template_dir_paths(paths, extensions=(".md", ".yml", ".yaml")) != [
-        f"{ISSUE_TEMPLATE_DIR}bug.yml",
-        f"{ISSUE_TEMPLATE_DIR}feature.md",
-    ]:
-        raise AssertionError("issue_template_dir_paths must apply extension filters after config exclusion")
-
-    source = GITHUB_SH.read_text()
-    uses = source.count("issue_template_dir_paths(")
-    if uses < 2:
-        raise AssertionError(
-            "github.sh must use the shared issue-template helper in both "
-            f"repo-scan and templates-issue discovery (found {uses} uses)"
-        )
+    assert issue_template_dir_paths(paths, extensions=(".md", ".yml", ".yaml")) == [
+        ".github/ISSUE_TEMPLATE/bug.yml",
+        ".github/ISSUE_TEMPLATE/feature.md",
+    ], "extension filter must apply on top of the config exclusion"
 
 
 def run(cmd_name: str, args: list[str]) -> tuple[int, str]:
