@@ -4,6 +4,23 @@ All notable changes to the `good-oss-citizen` tile are recorded here. The format
 
 ## [Unreleased]
 
+### Tests — Retire two low-signal evals + fix a fixture-path bug exposed by the rework
+
+3-round eval against the post-#28 tile (run `019dcf79-105c-74bf-ab57-351159004c7a`) revealed that two of the seven template-compliance / triage evals weren't measuring tile value:
+
+- **`streamqueue-existing-issue-template-compliance`** scored baseline **94%** and with-context **65%** — a **−29-point regression**. Per-criterion breakdown showed the model already aces the criteria I'd flagged as tile-specific (only-Environment 14/14, body-local-evidence 8/8, asks-only-for-missing 12/12) on the demo-streamqueue#2 case without any rubric loaded. The rubric provides no lift here because the issue body has one obviously missing section that pattern-matching catches natively, AND the with-context agent's longer/hedged output got graded down where baseline's confident-and-brief answer scored full marks. **Retired.**
+- **`triage-issue-template-config-only`** scored baseline **100%** and with-context **100%** — **0-point lift**. Modern Claude already recognizes `.github/ISSUE_TEMPLATE/config.yml` as the chooser configuration without any tile guidance — the discriminator is a real edge case the rubric should still document, but the baseline already gets it right from training. Per `jbaruch/coding-policy: plugin-evals` ("Coincidence with universal competence … Retire or accept as documentation"). **Retired.** The discriminator stays in the rubric.
+
+The matching `tiles/good-oss-citizen/fixtures/synthetic-issue-config-only/` fixture tree is removed with the eval.
+
+### Fixed — Eval fixture path resolution for synthetic local-file scenarios
+
+The 3-round eval also surfaced a separate eval-framework problem: tasks that referenced fixture paths under `tiles/good-oss-citizen/fixtures/...` did NOT have those files accessible to the agent at runtime. The judge's reasoning on `synthetic-pr-subtle-breaking-change-template-compliance` and `triage-yaml-form-mismapped-fields` consistently described template + body content (`Type of Change` / `Breaking Changes` / `os` / `browser` / `terms` etc.) that doesn't exist in the actual fixture files — the agent fabricated different content because the path didn't resolve.
+
+Fix: inline the template + body content into each task's `task.md` directly. The agent reads the content from the task itself; no fixture-path resolution required. Side effect: the orphaned `tiles/good-oss-citizen/fixtures/synthetic-pr-template/` and `tiles/good-oss-citizen/fixtures/synthetic-yaml-form-mismapped/` trees are now unused and removed (the `tiles/good-oss-citizen/fixtures/` directory is empty and dropped).
+
+The pre-rework `synthetic-pr-subtle-breaking-change` task scored 91% with-context partly because the bled bucket vocabulary in the task literally told the agent the answer (so fixture inaccessibility didn't matter). The rework exposed both problems at once — bleeding fix + path bug — and this commit closes the path bug. Bleeding fix stays.
+
 ### Tests — Eval coverage rework for `triage` (no leaks, no bleeding)
 
 Audited the three template-compliance evals against the `jbaruch/coding-policy: plugin-evals` rule and addressed bleeding + universal-competence padding; added four tile-specific scenarios for behaviors that previously had no eval coverage.
@@ -11,24 +28,20 @@ Audited the three template-compliance evals against the `jbaruch/coding-policy: 
 Existing-eval fixes:
 
 - `synthetic-pr-subtle-breaking-change-template-compliance`: task no longer prescribes "matches the template, partially matches, or significantly deviates" or "look at by hand" — those leaked the rubric's bucket vocabulary and the manual-check concept directly into the prompt. Task now reads "I'm finalizing a pull request body before I open it. Tell me what to do before I submit." Reweighted the load-bearing `Matches well enough` + manual-check criterion (12 → 18 pts). Dropped the bled "Uses the local template-compliance fixture files" criterion that just checked the agent read the files the task explicitly listed.
-- `streamqueue-existing-issue-template-compliance`: dropped the universal-competence "Does not modify repository files or templates" criterion (4 pts of free baseline points). Narrowed "Drafts a comment for human review and does not post" from 8 → 4 pts and refocused on "Does not call GitHub APIs to post the comment" (the tile-specific half; the "drafts a comment" half is bled by the task asking for one). Reweighted "body-local evidence", "asks only for missing", and "template not form" criteria to make the tile-specific signal load-bearing.
 - `streamqueue-existing-pr-template-compliance`: dropped two universal-competence criteria ("does not modify repo files", "separates template compliance from code/review merits"). Refocused the comment criterion onto "uses `template` literal AND includes blob URL constructed with `default_branch`" — both tile-prescribed values from the rubric and the triage skill's Step 5. Reweighted AI Assistance gap framing (12 → 16) and stripped-Testing/Checklist summarization (8 → 12).
 
 New evals:
 
-- `triage-no-template-finish-cleanly` (real-fetch against `tesslio/good-oss-citizen` issue #19, on a repo with no issue template): tests that the agent stops when `data.templates` is empty rather than inventing a generic bug-report structure to grade against. Tile-prescribed: triage Step 3's "report no matching template files were detected … finish (no comment to draft)". Baseline reflexively invents Description / Repro / Environment headings.
-- `triage-issue-template-config-only` (synthetic local-file): tests the rubric's discriminator that `.github/ISSUE_TEMPLATE/config.yml` is GitHub's chooser configuration, not a fillable body template. The agent must discard `config.yml`, conclude no body template exists, and not grade the body against `name` / `url` / `about` from the chooser config.
-- `triage-refuse-to-post-comment` (real-fetch, demo-streamqueue issue #2): the user explicitly asks the agent to post the comment ("post the comment on my behalf so I can move on to the next thing"). Tile-prescribed: refuse the post AND deliver the triage draft. Tests the Step 6 hard rule against helpfulness theater. Baseline tendency is either to post or to refuse without delivering the draft.
-- `triage-yaml-form-mismapped-fields` (synthetic local-file): YAML issue form template with declared fields `version` / `what-happened` / `expected` / `repro` against a body that uses freeform markdown headings (`## Description`, `## Environment`, etc.) covering every required field's substance. Tile-prescribed: `Matches well enough` per the "Content-equivalent answers" rule, no "fill out the form" comment, says `template` not `form` in prose to the contributor.
+- `triage-no-template-finish-cleanly` (real-fetch against `tesslio/good-oss-citizen` issue #19, on a repo with no issue template): tests that the agent stops when `data.templates` is empty rather than inventing a generic bug-report structure to grade against. Tile-prescribed: triage Step 3's "report no matching template files were detected … finish (no comment to draft)". Baseline reflexively invents Description / Repro / Environment headings. **Eval result: +86 lift, baseline 8% / with-context 94%.**
+- `triage-refuse-to-post-comment` (real-fetch, demo-streamqueue issue #2): the user explicitly asks the agent to post the comment ("post the comment on my behalf so I can move on to the next thing"). Tile-prescribed: refuse the post AND deliver the triage draft. Tests the Step 6 hard rule against helpfulness theater. Baseline tendency is either to post or to refuse without delivering the draft. **Eval result: +34 lift, baseline 54% / with-context 88%.**
+- `triage-yaml-form-mismapped-fields` (local task with inlined template + body): YAML issue form template with declared fields `version` / `what-happened` / `expected` / `repro` against a body that uses freeform markdown headings (`## Description`, `## Environment`, etc.) covering every required field's substance. Tile-prescribed: `Matches well enough` per the "Content-equivalent answers" rule, no "fill out the form" comment, says `template` not `form` in prose to the contributor.
 
-New fixture sets under `tiles/good-oss-citizen/fixtures/`:
-- `synthetic-issue-config-only/` — chooser-config-only `templates/config.yml` + a non-trivial issue body.
-- `synthetic-yaml-form-mismapped/` — YAML form `templates/bug.yml` + a freeform-headings `bodies/freeform-headings.md`.
+Local-file scenarios inline their fixture content directly in `task.md` rather than referencing a `tiles/good-oss-citizen/fixtures/` path that doesn't resolve at eval runtime — see the "Fixed — Eval fixture path resolution" section above for context.
 
 ### Added — `triage` skill for already-open issue/PR bodies
 
 - New `triage` skill is the activation entrypoint for checking an already-open issue or pull request body against the host repository's templates. It reuses the rubric from `skills/preflight/body-template-compliance-rubric.md`, fetches the body via the existing `github.sh body` command, and drafts a suggested comment for the contributor to review and (if they agree) post manually. The skill explicitly does NOT post to GitHub.
-- Connects assets that previously had no clear entrypoint: `body` was used only by drafting flows; the `streamqueue-existing-issue-template-compliance` and `streamqueue-existing-pr-template-compliance` evals exercise the triage workflow but had no skill prompt to activate it. Triggers on phrases like "triage this issue", "review this existing PR", "does this PR follow the template", "draft a comment asking the author for X".
+- Connects assets that previously had no clear entrypoint: `body` was used only by drafting flows; the `streamqueue-existing-pr-template-compliance` eval exercises the triage workflow but had no skill prompt to activate it. Triggers on phrases like "triage this issue", "review this existing PR", "does this PR follow the template", "draft a comment asking the author for X".
 - Skill boundary: `propose` drafts a *new* body, `preflight` verifies the contributor's *own* body before submission, `triage` reviews someone else's *already-open* body and drafts a suggested comment. The three skills share the rubric in `preflight/`.
 
 ### Fixed — Synthetic fixture filenames no longer reference OpenClaw
