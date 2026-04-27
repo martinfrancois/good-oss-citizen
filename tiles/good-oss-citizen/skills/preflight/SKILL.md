@@ -45,9 +45,10 @@ bash .tessl/tiles/tessl-labs/good-oss-citizen/skills/recon/scripts/bash/github.s
 
 The helper command emits a JSON envelope (see `skills/recon/SKILL.md` for the contract). Read `data.templates` — an array of `{path, content}` entries. If it is empty, treat the repo as having no PR template. Otherwise:
 
-- Name which template you used and why (e.g., "Used `<chosen-filename>` — matches the change type of this PR because <reason>"). If multiple exist, pick the one matching change type; if none match, use the first listed.
+- Name which template you used and why (e.g., "Used `<chosen-filename>` because it matches the change type of this PR: <reason>"). If multiple exist, list the candidate template paths considered, pick the one matching change type, and include the explicit because-clause in the preflight report; if none match, use the first listed.
+- Also record that selection in `pr_description.md` with a short HTML metadata comment before the template headings: `Template selected: <path> because <reason>` and `Candidate templates considered: <path>, <path>, ...`. This comment is metadata for the contributor; it must not replace any template section.
 - Verify every heading and section from the template is present in the PR description. Do not strip, reorder, or rename sections.
-- Fill every section — no empty sections, no placeholder text left behind.
+- Fill every section — no empty sections, no placeholder text left behind. Remove template helper comments and instructional placeholders such as `<!-- Required: ... -->` once the section is filled.
 - Verify the linked issue reference is present.
 - Verify any required checkboxes (AI disclosure, testing confirmation, CLA) are addressed.
 - Apply the body-local evidence rule: credit only information present in `pr_description.md` itself. If information is elsewhere in that body file, move or copy it into the expected section instead of asking again.

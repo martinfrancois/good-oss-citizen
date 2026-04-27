@@ -25,12 +25,15 @@ Use these exact filenames in the workspace root (no subdirectory):
 - `pr_description.md` — when the outcome is a pull request draft. Contains the full PR description (summary, linked issue, sections from the project's PR template, AI disclosure, etc.). Do NOT add/commit/push this file to the target repository — it is an out-of-band artifact for the contributor to copy into the PR body on GitHub.
 - `issue_body.md` — when the outcome is an issue filing. Contains the full issue body matching the project's issue template or YAML form. Same no-commit rule.
 - `discussion_body.md` — when the outcome is a discussion or mailing-list post.
+- `triage_comment.md` — when the outcome is checking an already-open issue or PR body and drafting a suggested comment for human review. Contains the template-compliance classification, suggested comment or `No comment needed`, manual-check notes, and any explicit no-post handoff.
 - `redirect_report.md` — when the outcome is "the target issue isn't workable" (claimed by another contributor, prior rejection of the same direction, AI restriction on the label). Contains: why the target is blocked (evidence), alternative open issues with numbers and titles, the project's AI disclosure format, and restricted-issue guidance if applicable.
 - `contribution_blocked.md` — when the outcome is "the project forbids AI contributions" (hard ban). Contains: the specific policy text that bans AI, suggestion that the contributor can still contribute without AI assistance, and any guidance the policy itself offers.
 
 ### AI disclosure is mandatory in every such artifact
 
 Every one of these files MUST include an AI disclosure section — no exceptions, including for issues, discussions, redirect reports, and bans. If the project requires AI disclosure, use their exact format. If the project has no AI policy, include voluntary disclosure: "**AI Disclosure:** This [PR / issue / redirect plan] was prepared with the assistance of [tool name]. [What was AI-assisted vs. human-written.] All content was reviewed by the human contributor before submission." A `Co-Authored-By` trailer is NOT a substitute for a prose AI disclosure section.
+
+Voluntary AI disclosure must render as normal Markdown/prose. Do not put voluntary disclosure inside triple-backtick fences or any other code block. A fenced voluntary disclosure is wrong because it renders as code rather than as contributor-readable issue or PR content. Only use a fenced disclosure when the target repository's explicit AI policy declares a code-block disclosure format.
 
 For YAML form issue templates that don't have a dedicated disclosure field: add the disclosure as a separate note the contributor pastes into the most relevant freeform field (e.g., the "additional context" or "what happened" field), or as the last line of the issue body — never omit it just because the form lacks a slot.
 
@@ -49,6 +52,16 @@ Every contribution — PR, issue, comment, discussion post — must be reviewed 
 ## Respect the host repo's issue and PR templates
 
 When filing an issue or opening a PR, fetch the target repo's templates first (`templates-issue OWNER/REPO` or `templates-pr OWNER/REPO`) and follow them exactly: pick the best match for intent, fill every section, and do not strip, reorder, or rename the template's structure. YAML form templates (`.yml` / `.yaml`) map content to declared form fields — not freeform markdown. Empty template files are treated as absent. Do NOT create templates in repos that lack them — this is consumer-side adaptation, not a suggestion to maintainers.
+
+## Triage existing issue/PR bodies against templates precisely
+
+When the user asks whether an already-open issue or pull request body follows the repository template, use the same template-compliance rules even if no skill activates. Fetch the item body with `body OWNER/REPO NUMBER`, fetch the matching templates with `templates-issue` or `templates-pr`, and compare only the fetched body against the selected template.
+
+Your final answer for such a check MUST name the selected template path and MUST report exactly one main result label: `Result: Matches well enough`, `Result: Slight deviation`, or `Result: Significant deviation`. Do not replace the result label with mild prose like "missing a few sections".
+
+For `Result: Significant deviation`, NEVER list every missing checkbox or prompt. Group related missing template content (for example, `stripped testing/checklist confirmation items`), ask the author to update the body against the template, and include the direct blob URL returned from the repo's default branch: `https://github.com/OWNER/REPO/blob/DEFAULT_BRANCH/PATH/TO/TEMPLATE`. If the suggested comment asks the author to update the body against a template but lacks this URL, it is incomplete.
+
+For `Result: Slight deviation`, ask only for focused missing information, concrete template-alignment fixes, or clarification of internally inconsistent required answers. If a filled required answer is contradicted elsewhere in the same body in a way that changes practical impact, scope, risk, reviewer action, or maintainer decision, ask the author to clarify which statement is correct; do not leave that only as a private triager note.
 
 ## Never include agent metafiles in contributions
 
