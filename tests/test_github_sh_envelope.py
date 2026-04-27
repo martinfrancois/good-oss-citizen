@@ -28,7 +28,10 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-GITHUB_SH = REPO_ROOT / "tiles" / "good-oss-citizen" / "skills" / "recon" / "scripts" / "bash" / "github.sh"
+SCRIPT_DIR = REPO_ROOT / "tiles" / "good-oss-citizen" / "skills" / "recon" / "scripts" / "bash"
+GITHUB_SH = SCRIPT_DIR / "github.sh"
+sys.path.insert(0, str(SCRIPT_DIR))
+from _templates import issue_template_dir_paths  # noqa: E402
 
 # (command-name, args-template, expected-ok). args-template uses {repo} and
 # {issue_number}/{pr_number}/{file_path} placeholders.
@@ -56,6 +59,34 @@ COMMANDS = [
     ("templates-issue", ["{repo}"], True),
     ("templates-pr", ["{repo}"], True),
 ]
+
+
+def assert_issue_template_config_excluded() -> None:
+    """Regression guard: GitHub's chooser-config files are not template bodies.
+
+    Behavioral check on the shared filter — `repo-scan` and
+    `templates-issue` both call it, so verifying the filter is enough.
+    A future refactor that unwires the helper from one caller is caught
+    by the live `repo-scan` / `templates-issue` exercise in the smoke
+    test against the upstream repo, not by source-text counting here.
+    """
+    paths = {
+        ".github/ISSUE_TEMPLATE/config.yml",
+        ".github/ISSUE_TEMPLATE/config.yaml",
+        ".github/ISSUE_TEMPLATE/bug.yml",
+        ".github/ISSUE_TEMPLATE/feature.md",
+        ".github/ISSUE_TEMPLATE/note.txt",
+    }
+    assert issue_template_dir_paths(paths) == [
+        ".github/ISSUE_TEMPLATE/bug.yml",
+        ".github/ISSUE_TEMPLATE/feature.md",
+        ".github/ISSUE_TEMPLATE/note.txt",
+    ], "issue_template_dir_paths must exclude config files only"
+
+    assert issue_template_dir_paths(paths, extensions=(".md", ".yml", ".yaml")) == [
+        ".github/ISSUE_TEMPLATE/bug.yml",
+        ".github/ISSUE_TEMPLATE/feature.md",
+    ], "extension filter must apply on top of the config exclusion"
 
 
 def run(cmd_name: str, args: list[str]) -> tuple[int, str]:
@@ -115,6 +146,13 @@ def main() -> int:
     if not GITHUB_SH.is_file():
         print(f"FAIL: github.sh not found at {GITHUB_SH}", file=sys.stderr)
         return 2
+
+    try:
+        assert_issue_template_config_excluded()
+        print("PASS static-regression (ISSUE_TEMPLATE config.yml excluded)")
+    except AssertionError as e:
+        print(f"FAIL static-regression: {e}", file=sys.stderr)
+        return 1
 
     placeholders = {
         "repo": args.repo,
