@@ -30,6 +30,7 @@ When multiple templates exist, choose the one that best matches the item's body 
   - The body substantially follows the template and includes required sections, required fields, or content-equivalent answers.
   - Remaining issues are cosmetic or unnecessary to ask about.
   - Do not downgrade for harmless rewording, removed instructional helper text, slight reformatting, omitted unchecked options, or non-verbatim answers that preserve the requested substance.
+  - A required field that is filled with an on-the-page answer stays in this bucket even when a different section of the same body contradicts that answer — see "Internal consistency and manual checks" below for the routing. The contradiction is a maintainer-judgment item, not a template-compliance gap.
 - **Slight deviation**
   - The body mostly follows the template, but one or two specific required parts are missing, weakly answered, incorrectly filled, or materially changed in a way that reduces clarity.
   - Small selected-checkbox/field label mismatches belong here when they prevent `Matches well enough` but the rest of the body is close.
@@ -118,19 +119,28 @@ For YAML issue forms, map fields by `id`, `label`, and `validations.required`.
 
 Look for contradictions, unexplained scope shifts, suspicious checkbox selections, or materially inconsistent wording inside the same body. You may compare the title against the body for inconsistency checks, but not for giving template-credit.
 
-Examples:
+Examples (all are inconsistencies *across* filled fields, not gaps in any single field):
 
 - one section says this is a bug fix while another describes a new feature,
 - the summary says there are no user-visible changes while another section describes user-visible behavior changes,
 - root cause describes one problem but the proposed solution appears to solve another,
-- selected checkboxes conflict with the body,
+- the `Bug fix` checkbox is checked but a different section describes a feature addition (the checkbox is filled — that's not a compliance gap — but the body disagrees with itself),
 - scope, impact, and verification sections describe materially different changes.
 
-Do **not** automatically treat every inconsistency as a template-compliance gap.
+Compliance gaps in checkbox / option lists (covered by the bucket definition, not this section): no required checkbox checked, a required selection that drifts from the template's label.
 
-- If the inconsistency makes a required section unclear, self-contradictory, or unreliable, it can be a compliance gap.
-- If it is suspicious but not certain enough for the main comment, put it under **Things to check manually**.
-- For each manual-check item, quote or summarize the conflicting body text and explain why it looks suspicious.
+### How to route an inconsistency
+
+Default routing — apply in order, take the first that fits:
+
+1. **Field is filled with a clear answer + another section contradicts it →** classify the body as `Matches well enough`, surface the contradiction in **Things to check manually** only. The required answer is on the page; the maintainer reads it. Asking the contributor to "fix" the field would be asking them to pick a winner you already saw — that is judgment, not template compliance. Even when the contradiction is sharp and obvious, this is the route to take.
+2. **Field is filled but the answer itself is internally self-contradictory** (e.g. "Backward compatible: Yes, except this breaks foo") **→** classify as `Slight deviation`, ask the author to clarify only that field. The answer is on the page but unreliable as written.
+3. **Field is empty / placeholder / `Yes/No` echoed as the literal answer →** classify as `Slight deviation` or `Significant deviation` per the rest of the body, ask only for that field. This is a template-compliance gap, not a consistency one.
+4. **The template's required structure is abandoned and consistency cannot be assessed →** `Significant deviation`, ask the author to follow the template.
+
+Routes 1 and 2 are the easy mistake direction: agents reflexively want to "help" by asking the contributor to resolve any contradiction they spot, treating the more authoritative section as the truth and asking for the other to be fixed. That is editorial judgment, not template compliance, and it produces a more demanding comment than the rubric prescribes. **When the required field is filled with an on-the-page answer, the contradiction always routes to Things to check manually, not to the main comment** — even if you are confident which side of the contradiction is wrong.
+
+For each manual-check item, quote or summarize the conflicting body text and explain why it looks suspicious. Phrase it as a check the human should make, not as a fix the contributor should apply.
 
 ## Output buckets
 
@@ -138,7 +148,8 @@ Use these buckets exactly:
 
 - **Template compliance gaps**
   - Definite body-vs-template problems visible from the selected template and the same body.
-  - Include missing required sections/fields, weak required answers, wrong template choice, required checkbox/field conflicts, materially changed selected checkbox labels, or required sections made unreliable by self-contradiction.
+  - Include: missing required sections/fields; weak required answers; wrong template choice; required selection absent (no checkbox checked when the template required one); materially changed selected checkbox labels (the selected label drifts from the template's label and becomes broader, narrower, less precise, or ambiguous); or required answers that are themselves internally self-contradictory (e.g. "Backward compatible: Yes, except this breaks foo" in the same line — the answer cancels itself out).
+  - A filled required answer that a different section of the body contradicts — including a selected checkbox option that another section's free text disagrees with — is NOT a compliance gap; it routes to "Things to check manually" per the Internal consistency rules. The compliance gap is when the selection itself is missing or the selected label drifts from the template; not when the selection is present but a different section claims something else.
 - **Information already present elsewhere in the same body**
   - Information requested by the template that appears in the body but not under the expected heading, field, or exact format.
   - Use this bucket to avoid over-asking in the suggested comment.
@@ -177,7 +188,7 @@ https://github.com/OWNER/REPO/blob/DEFAULT_BRANCH/PATH/TO/TEMPLATE
 
 Result-specific rules:
 
-- For `Matches well enough`, write `No comment needed`.
+- For `Matches well enough`, write `No comment needed` as the literal main-comment text. This applies even when **Things to check manually** is non-empty — the manual-check items go in the optional snippets section, not in the main comment. A `Matches well enough` body with a contradiction surfaced as a manual-check item produces `No comment needed` for the contributor and an optional snippet for the maintainer.
 - For `Slight deviation`, ask only for genuinely missing information and concrete template-alignment fixes, such as selected checkbox labels that should match the template wording.
 - For `Significant deviation`, do not list many individual missing details. Ask the author to follow the template and include the template link.
 - Do not automatically include manual-check items in the main comment. Put optional text for those under **Optional comment snippets for manual use**.
