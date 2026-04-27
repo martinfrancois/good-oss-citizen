@@ -53,15 +53,13 @@ Every contribution — PR, issue, comment, discussion post — must be reviewed 
 
 When filing an issue or opening a PR, fetch the target repo's templates first (`templates-issue OWNER/REPO` or `templates-pr OWNER/REPO`) and follow them exactly: pick the best match for intent, fill every section, and do not strip, reorder, or rename the template's structure. YAML form templates (`.yml` / `.yaml`) map content to declared form fields — not freeform markdown. Empty template files are treated as absent. Do NOT create templates in repos that lack them — this is consumer-side adaptation, not a suggestion to maintainers.
 
-## Triage existing issue/PR bodies against templates precisely
+## Triage existing issue/PR bodies against the template
 
-When the user asks whether an already-open issue or pull request body follows the repository template, use the same template-compliance rules even if no skill activates. Fetch the item body with `body OWNER/REPO NUMBER`, fetch the matching templates with `templates-issue` or `templates-pr`, and compare only the fetched body against the selected template.
+When the user asks whether an already-open issue or pull request body follows the repository's template, fetch the body and matching templates with `body OWNER/REPO NUMBER` + `templates-issue` / `templates-pr` and apply `skills/preflight/body-template-compliance-rubric.md`. The full triage workflow lives in `skills/triage/SKILL.md` — these are the always-on guardrails that apply even if no skill activates:
 
-Your final answer for such a check MUST name the selected template path and MUST report exactly one main result label: `Result: Matches well enough`, `Result: Slight deviation`, or `Result: Significant deviation`. Do not replace the result label with mild prose like "missing a few sections".
-
-For `Result: Significant deviation`, NEVER list every missing checkbox or prompt. Group related missing template content (for example, `stripped testing/checklist confirmation items`), ask the author to update the body against the template, and include the direct blob URL returned from the repo's default branch: `https://github.com/OWNER/REPO/blob/DEFAULT_BRANCH/PATH/TO/TEMPLATE`. If the suggested comment asks the author to update the body against a template but lacks this URL, it is incomplete.
-
-For `Result: Slight deviation`, ask only for focused missing information, concrete template-alignment fixes, or clarification of internally inconsistent required answers. If a filled required answer is contradicted elsewhere in the same body in a way that changes practical impact, scope, risk, reviewer action, or maintainer decision, ask the author to clarify which statement is correct; do not leave that only as a private triager note.
+- Name the selected template path in the response.
+- Report exactly one main result label: `Result: Matches well enough`, `Result: Slight deviation`, or `Result: Significant deviation` — never replace it with mild prose like "missing a few sections".
+- For `Result: Significant deviation`, ask the author to update the body against the template (do not enumerate every missing prompt) and include a direct blob URL constructed with the repo's default branch and the chosen template's path. A "follow the template" comment without the link is incomplete.
 
 ## Never include agent metafiles in contributions
 

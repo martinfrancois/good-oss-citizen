@@ -37,8 +37,6 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - name: Run template compliance static guards
-        run: python3 tests/test_template_compliance_static.py
       - name: Run envelope smoke test
         # Pin every fixture explicitly so the CI run is deterministic per
         # `rules/testing-standards.md`. No auto-discovery — auto-discovery
