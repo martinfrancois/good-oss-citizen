@@ -1,0 +1,41 @@
+{
+  "context": "This eval focuses on the template-compliance skill's ability to separate filled template fields from subtle body-internal consistency risks. The synthetic PR template has a Compatibility / Migration section with explicit Yes/No fields. The body fills that section as backward compatible with no migration needed, but much earlier in Summary says replacing `messageBridge.rawCaption` with `messageBridge.safeCaption` is a breaking change for plugins importing the old helper. The correct behavior is not to demand a template rewrite: the fields are present. Instead, classify as Matches well enough with a Things to check manually entry or optional snippet that highlights the distant contradiction for human judgment.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Uses the local template-compliance fixture files",
+      "max_score": 6,
+      "description": "The agent compares `templates/pr-template.md` against `bodies/introduce-breaking-change-contradiction.md` from the synthetic-pr-template fixtures. It does not fetch a GitHub issue/PR, invent a different template, or review code correctness."
+    },
+    {
+      "name": "Recognizes the Compatibility / Migration fields are present",
+      "max_score": 10,
+      "description": "The agent notices the body includes `Backward compatible? (Yes/No) Yes`, `Config/env changes? (Yes/No) No`, `Migration needed? (Yes/No) No`, and upgrade steps. It does not incorrectly report the Compatibility / Migration section as missing."
+    },
+    {
+      "name": "Finds the distant breaking-change contradiction",
+      "max_score": 14,
+      "description": "The agent identifies that Summary says replacing `messageBridge.rawCaption` with `messageBridge.safeCaption` is a breaking change for plugins importing the old helper, while Compatibility / Migration says the PR is backward compatible and no migration is needed. It should connect these distant statements even though they use different field wording."
+    },
+    {
+      "name": "Classifies as Matches well enough with manual check, not a rewrite request",
+      "max_score": 12,
+      "description": "The result is `Matches well enough` (or equivalent) with a `Things to check manually` entry, because the template is filled and the issue is a suspicious consistency check for a reviewer. `Slight deviation` is partial credit only if it clearly avoids asking for a full rewrite. `Significant deviation` is incorrect."
+    },
+    {
+      "name": "Keeps the main suggested comment quiet",
+      "max_score": 8,
+      "description": "The main suggested comment is `No comment needed` or otherwise does not ask the author to follow/rewrite the template. Any wording about the contradiction is kept as an optional manual-check snippet for the reviewer, phrased tentatively rather than as an accusation."
+    },
+    {
+      "name": "Does not over-ask for already-present template content",
+      "max_score": 8,
+      "description": "The agent does not ask for Summary, Security Impact, Compatibility / Migration, Repro / Verification, User-visible changes, Environment, Human verification, or the Yes/No field, because those fields are already present in the same body."
+    },
+    {
+      "name": "Explains why this is a manual review signal",
+      "max_score": 6,
+      "description": "The output briefly explains that the body-local template content is present, but the conflicting compatibility claims may need human judgment to decide whether the compatibility answer or summary text should change."
+    }
+  ]
+}

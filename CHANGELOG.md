@@ -4,6 +4,14 @@ All notable changes to the `good-oss-citizen` tile are recorded here. The format
 
 ## [Unreleased]
 
+### Added — Body / template compliance rubric
+
+- New `skills/preflight/body-template-compliance-rubric.md` defines how to grade an issue or PR body against the host repository's template — body-local evidence rule, content-equivalent answers, checkbox / option-list alignment, YAML form field rules, internal-consistency manual checks, output buckets (`Matches well enough` / `Slight deviation` / `Significant deviation` / `Things to check manually`), and a polite-comment template that says `template`, never `form`.
+- `preflight` Check 3 (PR template compliance) and `propose` Step 5 (Apply the template rules) now reference the rubric for final verification of `pr_description.md` / `issue_body.md` before handoff.
+- New `github.sh body` command fetches an issue or pull request body as a JSON envelope and classifies it as `issue` or `pull_request` (23rd helper command).
+- New eval scenarios: `streamqueue-existing-issue-template-compliance`, `streamqueue-existing-pr-template-compliance`, and `synthetic-pr-subtle-breaking-change-template-compliance`. The synthetic case checks a body whose Compatibility / Migration section says "backward compatible" while a Summary line earlier in the same body describes a concrete breaking API replacement — the expected behavior is `Matches well enough` with a manual-check entry, not a rewrite request.
+- Synthetic PR-template fixtures live under `evals/fixtures/synthetic-pr-template/` so they're scoped to the eval domain rather than checked-in skill content.
+
 ## [1.1.0] — 2026-04-26
 
 ### Changed — github.sh emits JSON envelopes (closes #13)

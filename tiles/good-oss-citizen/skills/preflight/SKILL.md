@@ -37,7 +37,7 @@ Compare the PR's diff against typical PR size from recon findings:
 
 ## Check 3: PR template compliance
 
-Fetch the target repo's PR templates — do not rely on recon notes, and do not guess the path:
+Fetch the target repo's PR templates — do not rely on recon notes, and do not guess the path. Then apply `skills/preflight/body-template-compliance-rubric.md` as the final verification rubric for `pr_description.md`:
 
 ```bash
 bash .tessl/tiles/tessl-labs/good-oss-citizen/skills/recon/scripts/bash/github.sh templates-pr OWNER/REPO
@@ -50,6 +50,8 @@ The helper command emits a JSON envelope (see `skills/recon/SKILL.md` for the co
 - Fill every section — no empty sections, no placeholder text left behind.
 - Verify the linked issue reference is present.
 - Verify any required checkboxes (AI disclosure, testing confirmation, CLA) are addressed.
+- Apply the body-local evidence rule: credit only information present in `pr_description.md` itself. If information is elsewhere in that body file, move or copy it into the expected section instead of asking again.
+- Fix `pr_description.md` until the rubric result would be `Matches well enough`. Do not draft a public comment during preflight; edit the local PR body file instead. If genuinely missing information requires contributor input, leave a clear placeholder and mark Check 3 as failing.
 - Treat empty template files (or files containing only front matter) as absent.
 
 If no template exists, verify the PR description at minimum contains:
@@ -59,6 +61,8 @@ If no template exists, verify the PR description at minimum contains:
 - How to test the change
 
 Do NOT create a PR template in a repo that lacks one — this is consumer-side compliance, not a suggestion to maintainers.
+
+In the preflight report, include the template-compliance result (`Matches well enough`, `Slight deviation`, or `Significant deviation`) plus any remaining genuine missing information or manual checks.
 
 ## Check 4: Style and convention compliance
 

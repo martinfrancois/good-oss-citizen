@@ -1,0 +1,56 @@
+{
+  "context": "This eval focuses on the new template-compliance workflow for an already-open ISSUE body, not on generating a new issue. The target is good-oss-citizen/demo-streamqueue issue #2. The repo has a bug-report issue template at .github/ISSUE_TEMPLATE/bug_report.md with sections Description, Steps to Reproduce, Expected Behavior, Actual Behavior, Environment. Issue #2 already contains the first four sections with useful content, but it omits Environment entirely. The correct result is a Slight deviation with one genuinely missing item: Environment / Python version / streamqueue version. The agent should fetch the template and the existing issue body, compare only body-local evidence, and draft a human-reviewed comment without posting it.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Uses template-compliance flow for existing issue body",
+      "max_score": 8,
+      "description": "The agent treats the task as checking an already-open issue body against the repo's issue template, not as filing a new issue, fixing code, or editing template files. Strong evidence is visible in the final answer when it applies template-compliance concepts and references existing issue #2; do not require hidden tool-call or activation telemetry."
+    },
+    {
+      "name": "Fetches issue templates and existing body",
+      "max_score": 10,
+      "description": "The final answer or visible transcript shows the agent used both the repo's issue template and the existing issue body for #2. Strong final-answer evidence includes naming the bug-report template sections and accurately distinguishing them from the issue body's populated/missing sections. If tool-call evidence is visible, ideal commands are `github.sh templates-issue good-oss-citizen/demo-streamqueue` and `github.sh body good-oss-citizen/demo-streamqueue 2`, but do not require hidden tool-call telemetry. Fetching or using only the template or only the issue body is partial credit."
+    },
+    {
+      "name": "Selects bug_report.md as the comparison template",
+      "max_score": 6,
+      "description": "The agent compares issue #2 against `.github/ISSUE_TEMPLATE/bug_report.md`, not feature_request.md and not a generic/freeform bug-report structure. The issue title/body and bug label make bug_report.md the correct template."
+    },
+    {
+      "name": "Classifies as Slight deviation, not Significant deviation",
+      "max_score": 10,
+      "description": "The agent's result bucket is `Slight deviation` or equivalent wording that means the issue mostly follows the template but has a small fixable gap. It must NOT claim the issue matches perfectly, and must NOT ask the author to rewrite the whole issue against the template."
+    },
+    {
+      "name": "Identifies only Environment as genuinely missing",
+      "max_score": 14,
+      "description": "The agent correctly reports that the missing template information is the Environment section, specifically Python version and streamqueue version. It does NOT ask for Description, Steps to Reproduce, Expected Behavior, or Actual Behavior because those are already present in the same issue body."
+    },
+    {
+      "name": "Uses body-local evidence only",
+      "max_score": 6,
+      "description": "The agent does not use chat context, assumptions, repository code, or external facts to fill the missing Environment fields. It asks the issue author for the versions instead of inventing them."
+    },
+    {
+      "name": "Drafts a concise comment for human review and does not post",
+      "max_score": 8,
+      "description": "The output includes a concise suggested comment that the maintainer or contributor can review before posting. The agent does not call GitHub APIs to post a comment and does not imply it posted anything publicly."
+    },
+    {
+      "name": "Comment asks only for the missing template information",
+      "max_score": 8,
+      "description": "The suggested comment asks the author to add the Environment section / Python version / streamqueue version and nothing else. It avoids over-asking for information already present elsewhere in the body."
+    },
+    {
+      "name": "Comment uses the word template and appropriate tone",
+      "max_score": 4,
+      "description": "The suggested comment uses the word `template` rather than `form`, is polite, direct, and collaborative in a way that works whether the reviewer is a maintainer or a contributor. It should not sound unnecessarily authoritative, hierarchical, or directive."
+    },
+    {
+      "name": "Does not modify repository files or templates",
+      "max_score": 4,
+      "description": "The agent does not create, edit, or propose changes to `.github/ISSUE_TEMPLATE/bug_report.md` or any project source files. This is a body-compliance review only."
+    }
+  ]
+}

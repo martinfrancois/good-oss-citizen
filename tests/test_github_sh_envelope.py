@@ -1,6 +1,6 @@
 """Smoke test: every github.sh command emits a valid JSON envelope.
 
-Exercises all 22 commands against a stable public test repo and asserts:
+Exercises all 23 commands against a stable public test repo and asserts:
   - stdout is parseable as JSON
   - the envelope has the contract keys (command, ok, data, warnings, errors)
   - each key has the correct type
@@ -38,6 +38,7 @@ from _templates import issue_template_dir_paths  # noqa: E402
 COMMANDS = [
     ("repo-scan", ["{repo}"], True),
     ("issue", ["{repo}", "{issue_number}"], True),
+    ("body", ["{repo}", "{issue_number}"], True),
     ("issue-comments", ["{repo}", "{issue_number}"], True),
     ("check-claim", ["{repo}", "{issue_number}"], True),
     ("issues-open", ["{repo}"], True),
@@ -188,6 +189,21 @@ def main() -> int:
             failed.append(msg)
             print(f"FAIL {msg}", file=sys.stderr)
             continue
+
+        if cmd_name == "body" and env["ok"]:
+            data = env["data"]
+            required = {"kind", "number", "title", "state", "url", "body"}
+            missing = required - data.keys()
+            if missing:
+                msg = f"body: missing data keys {missing}"
+                failed.append(msg)
+                print(f"FAIL {msg}", file=sys.stderr)
+                continue
+            if data["kind"] not in {"issue", "pull_request"}:
+                msg = f"body: kind must be issue or pull_request, got {data['kind']!r}"
+                failed.append(msg)
+                print(f"FAIL {msg}", file=sys.stderr)
+                continue
 
         # Exit code must agree with ok.
         expected_rc = 0 if expected_ok else 1

@@ -2,7 +2,7 @@
 
 These rules are always active when contributing to open source projects. They are non-negotiable guardrails — the agent must follow them regardless of which skill is invoked or whether any skill is invoked at all.
 
-**GitHub helper script:** For all GitHub API calls, use the helper script (NOT WebFetch, NOT curl, NOT `gh` CLI directly): `bash .tessl/tiles/tessl-labs/good-oss-citizen/skills/recon/scripts/bash/github.sh <command> OWNER/REPO [args]`. Key commands: `repo-scan`, `ai-policy`, `disclosure-format`, `issue-comments`, `pr-history`, `related-prs`, `commit-conventions`, `branch-conventions`, `pr-stats`, `issues-open`, `issues-closed`, `templates-issue`, `templates-pr`, `file`.
+**GitHub helper script:** For all GitHub API calls, use the helper script (NOT WebFetch, NOT curl, NOT `gh` CLI directly): `bash .tessl/tiles/tessl-labs/good-oss-citizen/skills/recon/scripts/bash/github.sh <command> OWNER/REPO [args]`. Key commands: `repo-scan`, `ai-policy`, `disclosure-format`, `issue-comments`, `pr-history`, `related-prs`, `commit-conventions`, `branch-conventions`, `pr-stats`, `issues-open`, `issues-closed`, `templates-issue`, `templates-pr`, `body`, `file`.
 
 **IMPORTANT: Always run the scripts — never substitute WebFetch or direct API calls.** The scripts return deterministic, structured data that you must use. WebFetch summarizes content and loses critical details (like claim comments on issues). Skipping a script call or replacing it with WebFetch is a bug, not an optimization.
 

@@ -104,9 +104,12 @@ The helper commands emit JSON envelopes (see `skills/recon/SKILL.md` for the con
 
 When Step 4 returned one or more templates, follow these rules. Then proceed to Step 6.
 
-- **Pick the best match for intent.** For issues: bug report vs. feature request vs. generic — prefer the most specific; fall back to generic if none fit cleanly. For PRs: match on change type (fix / feat / docs) via filename or title; if none match, use the first listed.
+Before writing the body file, read `skills/preflight/body-template-compliance-rubric.md` and use it as the final verification rubric for `issue_body.md` / `pr_description.md`. For these local pre-submission body files, the action is to fix the file, not to draft public comments.
+
+- **Pick the best match for intent.** For issues: bug report vs. feature request vs. generic — prefer the most specific; fall back to generic if none fit cleanly. Ignore `.github/ISSUE_TEMPLATE/config.yml` / `config.yaml` because it configures GitHub issue forms; it is not a submission template. For PRs: match on change type (fix / feat / docs) via filename or title; if none match, use the first listed.
 - **Preserve structure.** Fill the template's existing headings and sections. Do not strip, reorder, or rename sections.
 - **YAML form templates** (`.yml` / `.yaml` in `.github/ISSUE_TEMPLATE/`): map generated content into each declared form field by its `id` / `label`. Do not submit freeform markdown in place of the form.
+- **Body-local evidence.** During final verification, credit only information present in the local body file itself. If the information exists elsewhere in that file, move or copy it into the expected section instead of asking for it again.
 - **Empty template files** (or files with only front matter) are treated as absent — proceed as if no template existed.
 
 State which template was selected in your handoff and why (e.g., "Used `<chosen-filename>` — matches the intent of this contribution because <reason>"). Reference the template by its actual path; do not invent a filename.
@@ -122,6 +125,7 @@ Depending on the selected venue:
 - Reference any prior related issues, PRs, or discussions.
 - Describe the problem clearly. Describe the proposed approach. Ask if the approach is welcome before implementing.
 - Keep it concise — respect maintainer reading time.
+- Before finishing, re-check `issue_body.md` against the selected issue template using the template-compliance rubric. If the result would be `Slight deviation` or `Significant deviation`, fix the file until it `Matches well enough` or explicitly report the genuinely missing information that requires contributor input.
 
 **Example of a well-framed issue:**
 > **Problem:** `Config.load()` silently ignores unrecognised keys, making misconfiguration hard to debug.
@@ -144,7 +148,7 @@ Depending on the selected venue:
 ### For a PR (if that's the right venue):
 - Write the code changes (fix, feature, refactor — whatever the contribution requires). Use the conventions captured in the recon report.
 - Create the branch and commit using the exact formats recorded in the recon report (commit-conventions, branch-conventions).
-- Proceed immediately to the preflight skill — preflight verifies the PR is ready and writes `pr_description.md`:
+- Proceed immediately to the preflight skill — preflight verifies the PR is ready, writes `pr_description.md`, and applies the template-compliance rubric as final PR-body verification:
 
 `Skill(skill: "preflight")`
 
