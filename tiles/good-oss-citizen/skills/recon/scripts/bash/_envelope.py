@@ -126,4 +126,90 @@ def fetch_json(endpoint):
         return None
 
 
+def _curl_auth_config():
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    if not token:
+        return None
+    return f'header = "Authorization: Bearer {token}"\n'
+
+
+def _parse_response_with_headers(stdout):
+    header_text, separator, body = stdout.replace("\r\n", "\n").partition("\n\n")
+    if not separator:
+        return None, None
+    status = None
+    for line in header_text.split("\n"):
+        if line.startswith("HTTP/"):
+            parts = line.split()
+            if len(parts) >= 2:
+                try:
+                    status = int(parts[1])
+                except ValueError:
+                    return None, None
+    if status is None:
+        return None, None
+    if not body.strip():
+        return None, status
+    try:
+        return json.loads(body), status
+    except json.JSONDecodeError:
+        return None, status
+
+
+def fetch_json_with_status(endpoint):
+    """Fetch + JSON-decode with HTTP status. Returns (data, status)."""
+    try:
+        gh_result = subprocess.run(
+            ["gh", "api", "-i", endpoint],
+            capture_output=True,
+            text=True,
+            timeout=TIMEOUT,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        gh_result = None
+    if gh_result and gh_result.stdout:
+        data, status = _parse_response_with_headers(gh_result.stdout)
+        if status is not None:
+            return data, status
+
+    curl_cmd = ["curl", "-sS", "-H", "Accept: application/vnd.github+json"]
+    curl_config = _curl_auth_config()
+    if curl_config:
+        curl_cmd += ["--config", "-"]
+    curl_cmd += ["-w", "\n%{http_code}", f"{API}{endpoint}"]
+    try:
+        result = subprocess.run(
+            curl_cmd,
+            capture_output=True,
+            input=curl_config,
+            text=True,
+            timeout=TIMEOUT,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None, None
+    if result.returncode != 0 or not result.stdout:
+        return None, None
+    body, _, status_text = result.stdout.rpartition("\n")
+    try:
+        status = int(status_text)
+    except ValueError:
+        return None, None
+    if not body.strip():
+        return None, status
+    try:
+        return json.loads(body), status
+    except json.JSONDecodeError:
+        return None, status
+
+
+def fetch_optional_json(endpoint):
+    """Fetch optional JSON. Returns (data, found), with None found on ambiguity."""
+    data, status = fetch_json_with_status(endpoint)
+    if status == 404:
+        return None, False
+    if status == 200 and data is not None:
+        return data, True
+    return None, None
+
+
 _install_excepthook()

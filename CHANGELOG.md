@@ -4,6 +4,16 @@ All notable changes to the `good-oss-citizen` tile are recorded here. The format
 
 ## [Unreleased]
 
+### Fixed — Template and policy discovery edge cases
+
+- Policy and contribution scans now probe common `.github/` and `docs/`
+  locations and report the matched contribution path.
+- AI disclosure format detection now requires AI/disclosure context so unrelated
+  code blocks containing labels such as `Tool:` or `Used for:` are ignored.
+- PR template detection now de-duplicates case-insensitive matches, probes
+  lowercase single-template paths, treats frontmatter-only templates as absent,
+  and falls back to direct probes when recursive tree results are truncated.
+
 ### Changed — Tighten two low-lift template-compliance evals
 
 Post-merge 3-run eval after #39 (run `019dd134-b762-7619-bb00-25ee15641dab`) flagged two scenarios where baseline already cleared 75% and the tile's lift was driven by narrow format details rather than the rubric's core prescriptions:

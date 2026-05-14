@@ -23,8 +23,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import stat
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -90,6 +93,69 @@ def assert_issue_template_config_excluded() -> None:
     ], "extension filter must apply on top of the config exclusion"
 
 
+def fake_disclosure_format(contributing_body: str) -> tuple[int, dict]:
+    fake_gh = """#!/usr/bin/env python3
+import base64
+import json
+import sys
+
+CONTRIBUTING_BODY = __CONTRIBUTING_BODY__
+args = sys.argv[1:]
+endpoint = args[-1]
+
+if args == ["api", "/repos/example/repo"]:
+    print(json.dumps({"default_branch": "main"}))
+    raise SystemExit(0)
+
+if args[:2] == ["api", "-i"] and endpoint.startswith("/repos/example/repo/contents/"):
+    path = endpoint.split("/contents/", 1)[1].split("?", 1)[0]
+    if path == "CONTRIBUTING.md":
+        payload = {"content": base64.b64encode(CONTRIBUTING_BODY.encode()).decode()}
+        print("HTTP/2 200\\n\\n" + json.dumps(payload))
+    else:
+        print('HTTP/2 404\\n\\n{"message":"Not Found"}')
+    raise SystemExit(0)
+
+raise SystemExit(1)
+""".replace("__CONTRIBUTING_BODY__", repr(contributing_body))
+    with tempfile.TemporaryDirectory() as tempdir:
+        gh_path = Path(tempdir) / "gh"
+        gh_path.write_text(fake_gh)
+        gh_path.chmod(gh_path.stat().st_mode | stat.S_IXUSR)
+        env = {**os.environ, "PATH": f"{tempdir}:{os.environ['PATH']}"}
+        proc = subprocess.run(
+            ["bash", str(GITHUB_SH), "disclosure-format", "example/repo"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            env=env,
+        )
+
+    return proc.returncode, assert_envelope("disclosure-format-heading-context", proc.stdout)
+
+
+def assert_disclosure_format_uses_ai_heading_context() -> None:
+    """Regression guard: prose formats may be introduced by an AI heading."""
+    proc_returncode, env_body = fake_disclosure_format(
+        "## AI contributions\nPlease include the tool used and what was reviewed.\n"
+    )
+    assert proc_returncode == 0
+    assert env_body["ok"] is True
+    assert env_body["data"]["format"] == "prose"
+    assert env_body["data"]["source"] == "CONTRIBUTING.md"
+    assert "Please include the tool used" in env_body["data"]["template"]
+
+
+def assert_disclosure_format_ignores_ai_substrings() -> None:
+    """Regression guard: words like maintainers/failing are not AI context."""
+    proc_returncode, env_body = fake_disclosure_format(
+        "## Contributing\nMaintainers should include failing tests.\n"
+    )
+    assert proc_returncode == 0
+    assert env_body["ok"] is True
+    assert env_body["data"]["format"] == "none"
+
+
 def run(cmd_name: str, args: list[str]) -> tuple[int, str]:
     proc = subprocess.run(
         ["bash", str(GITHUB_SH), cmd_name, *args],
@@ -151,6 +217,10 @@ def main() -> int:
     try:
         assert_issue_template_config_excluded()
         print("PASS static-regression (ISSUE_TEMPLATE config.yml excluded)")
+        assert_disclosure_format_uses_ai_heading_context()
+        print("PASS static-regression (disclosure prose heading context)")
+        assert_disclosure_format_ignores_ai_substrings()
+        print("PASS static-regression (disclosure ignores ai substrings)")
     except AssertionError as e:
         print(f"FAIL static-regression: {e}", file=sys.stderr)
         return 1

@@ -47,6 +47,12 @@ sha = ref["object"]["sha"]
 tree = fetch_json(f"/repos/{REPO}/git/trees/{sha}?recursive=1")
 if not tree or "tree" not in tree:
     fail(CMD, f"could not fetch tree {sha} for {REPO}")
+warnings = []
+if tree.get("truncated"):
+    warnings.append(
+        f"repository tree for {sha} was truncated — "
+        "path-based scan results may be incomplete; direct policy/template commands may still work"
+    )
 
 paths = {item["path"] for item in tree.get("tree", []) if item.get("type") == "blob"}
 
@@ -92,6 +98,7 @@ issue_templates_found = issue_dir + issue_legacy
 
 emit(CMD, {
     "default_branch": default_branch,
+    "tree_truncated": bool(tree.get("truncated")),
     "policy_files": policy_files,
     "agent_instructions": agent_instructions,
     "conventions": conventions,
@@ -107,7 +114,7 @@ emit(CMD, {
     "ci_workflows": {
         "found": sorted(p for p in paths if p.startswith(".github/workflows/"))
     },
-})
+}, warnings=warnings)
 PYEOF
         ;;
 
@@ -491,7 +498,7 @@ PYEOF
         REPO="$REPO" python3 <<'PYEOF'
 import base64
 import os
-from _envelope import emit, fail, fetch_json
+from _envelope import emit, fail, fetch_json, fetch_optional_json
 
 REPO = os.environ["REPO"]
 repo_meta = fetch_json(f"/repos/{REPO}")
@@ -499,17 +506,25 @@ if not repo_meta or "default_branch" not in repo_meta:
     fail("ai-policy", f"could not fetch repo metadata for {REPO}")
 ref = repo_meta["default_branch"]
 
+policy_paths = (
+    "AI_POLICY.md", "AI_CONTRIBUTION_POLICY.md",
+    "CONTRIBUTING.md", ".github/CONTRIBUTING.md", "docs/CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md", ".github/CODE_OF_CONDUCT.md", "docs/CODE_OF_CONDUCT.md",
+    "SECURITY.md", "README.md",
+)
+
 results = []
-for path in ("AI_POLICY.md", "CODE_OF_CONDUCT.md", "CONTRIBUTING.md"):
-    d = fetch_json(f"/repos/{REPO}/contents/{path}?ref={ref}")
-    if not d or "content" not in d:
+for path in policy_paths:
+    d, found = fetch_optional_json(f"/repos/{REPO}/contents/{path}?ref={ref}")
+    if found is False:
         results.append({"path": path, "found": False, "content": None})
         continue
+    if found is None or not d or "content" not in d:
+        fail("ai-policy", f"could not fetch policy file {path} from {REPO}")
     try:
         content = base64.b64decode(d["content"]).decode("utf-8")
     except (ValueError, UnicodeDecodeError):
-        results.append({"path": path, "found": False, "content": None})
-        continue
+        fail("ai-policy", f"could not decode policy file {path}")
     results.append({"path": path, "found": True, "content": content})
 
 emit("ai-policy", {"default_branch": ref, "files": results})
@@ -521,7 +536,7 @@ PYEOF
 import base64
 import os
 import re
-from _envelope import emit, fail, fetch_json
+from _envelope import emit, fail, fetch_json, fetch_optional_json
 
 REPO = os.environ["REPO"]
 repo_meta = fetch_json(f"/repos/{REPO}")
@@ -529,46 +544,112 @@ if not repo_meta or "default_branch" not in repo_meta:
     fail("disclosure-format", f"could not fetch repo metadata for {REPO}")
 ref = repo_meta["default_branch"]
 
-d = fetch_json(f"/repos/{REPO}/contents/AI_POLICY.md?ref={ref}")
-if not d or "content" not in d:
+policy_paths = (
+    "AI_POLICY.md", "AI_CONTRIBUTION_POLICY.md",
+    "CONTRIBUTING.md", ".github/CONTRIBUTING.md", "docs/CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md", ".github/CODE_OF_CONDUCT.md", "docs/CODE_OF_CONDUCT.md",
+    "SECURITY.md", "README.md",
+)
+
+policy_files = []
+for path in policy_paths:
+    d, found = fetch_optional_json(f"/repos/{REPO}/contents/{path}?ref={ref}")
+    if found is False:
+        continue
+    if found is None or not d or "content" not in d:
+        fail("disclosure-format", f"could not fetch policy file {path} from {REPO}")
+    try:
+        content = base64.b64decode(d["content"]).decode("utf-8")
+    except (ValueError, UnicodeDecodeError):
+        fail("disclosure-format", f"could not decode policy file {path}")
+    policy_files.append((path, content))
+
+if not policy_files:
     emit("disclosure-format", {"format": "none", "template": None},
-         warnings=["AI_POLICY.md not found — no disclosure format required"])
+         warnings=["no AI policy or contribution policy file found — no disclosure format required"])
     raise SystemExit(0)
 
-try:
-    content = base64.b64decode(d["content"]).decode("utf-8")
-except (ValueError, UnicodeDecodeError):
-    fail("disclosure-format", "could not decode AI_POLICY.md")
 
-blocks = re.findall(r"```[\s\S]*?```", content)
-template_block = None
-for block in blocks:
-    if "Tool:" in block or "Used for:" in block or "AI Assistance" in block:
-        template_block = block.strip("`").strip()
-        break
+AI_TERM = re.compile(r"\b(ai|codex|claude|vibe[- ]coded)\b")
 
-if template_block:
-    emit("disclosure-format", {"format": "code_block", "template": template_block})
-    raise SystemExit(0)
+
+def has_ai_context_text(text):
+    return bool(AI_TERM.search(text.lower()))
+
+
+def has_ai_disclosure_context(path, content, match):
+    block = match.group(0).lower()
+    if "ai assistance" in block or (has_ai_context_text(block) and "disclos" in block):
+        return True
+    if path in ("AI_POLICY.md", "AI_CONTRIBUTION_POLICY.md"):
+        return True
+    before = max(0, match.start() - 500)
+    after = min(len(content), match.end() + 300)
+    context = content[before:after].lower()
+    disclosure_terms = ("disclos", "assist", "prompt", "session log")
+    return (
+        has_ai_context_text(context)
+        and any(term in context for term in disclosure_terms)
+    )
+
+
+for path, content in policy_files:
+    for match in re.finditer(r"```[\s\S]*?```", content):
+        block = match.group(0)
+        if "Tool:" in block or "Used for:" in block or "AI Assistance" in block:
+            if not has_ai_disclosure_context(path, content, match):
+                continue
+            lines = block.strip().splitlines()
+            if lines and lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].startswith("```"):
+                lines = lines[:-1]
+            template_block = "\n".join(lines).strip()
+            emit("disclosure-format", {
+                "format": "code_block",
+                "source": path,
+                "template": template_block,
+            })
+            raise SystemExit(0)
 
 # Bullet/prose fallback — collect a small window around the disclosure heading
-in_format = False
-format_lines = []
-for line in content.split("\n"):
-    low = line.lower()
-    if "format" in low or "disclos" in low or "include" in low:
-        in_format = True
-    if in_format:
-        format_lines.append(line)
-        if len(format_lines) > 10:
-            break
+for path, content in policy_files:
+    in_format = False
+    format_lines = []
+    ai_context_remaining = 0
+    for line in content.split("\n"):
+        low = line.lower()
+        if re.match(r"\s{0,3}#{1,6}\s+.*\b(ai|codex|claude|vibe[- ]coded)\b", low):
+            ai_context_remaining = 8
+        disclosure_line = (
+            "format" in low
+            or "disclos" in low
+            or "include" in low
+            or "assistance" in low
+        )
+        if disclosure_line and (
+            path in ("AI_POLICY.md", "AI_CONTRIBUTION_POLICY.md")
+            or has_ai_context_text(low)
+            or ai_context_remaining > 0
+        ):
+            in_format = True
+        if in_format:
+            format_lines.append(line)
+            if len(format_lines) > 10:
+                break
+        if ai_context_remaining > 0:
+            ai_context_remaining -= 1
 
-if format_lines:
-    emit("disclosure-format", {"format": "prose", "template": "\n".join(format_lines)})
-    raise SystemExit(0)
+    if format_lines:
+        emit("disclosure-format", {
+            "format": "prose",
+            "source": path,
+            "template": "\n".join(format_lines),
+        })
+        raise SystemExit(0)
 
 emit("disclosure-format", {"format": "none", "template": None},
-     warnings=["AI_POLICY.md exists but no specific disclosure template found — recommend voluntary disclosure"])
+     warnings=["policy files exist but no specific disclosure template found — recommend voluntary disclosure"])
 PYEOF
         ;;
 
@@ -673,7 +754,7 @@ PYEOF
         REPO="$REPO" python3 <<'PYEOF'
 import base64
 import os
-from _envelope import emit, fail, fetch_json
+from _envelope import emit, fail, fetch_json, fetch_optional_json
 
 REPO = os.environ["REPO"]
 repo_meta = fetch_json(f"/repos/{REPO}")
@@ -681,17 +762,28 @@ if not repo_meta or "default_branch" not in repo_meta:
     fail("contributing-requirements", f"could not fetch repo metadata for {REPO}")
 ref = repo_meta["default_branch"]
 
-d = fetch_json(f"/repos/{REPO}/contents/CONTRIBUTING.md?ref={ref}")
-if not d or "content" not in d:
+source = None
+d = None
+for candidate in ("CONTRIBUTING.md", ".github/CONTRIBUTING.md", "docs/CONTRIBUTING.md"):
+    d, found = fetch_optional_json(f"/repos/{REPO}/contents/{candidate}?ref={ref}")
+    if found is False:
+        continue
+    if found is None or not d or "content" not in d:
+        fail("contributing-requirements", f"could not fetch {candidate} from {REPO}")
+    if found:
+        source = candidate
+        break
+
+if source is None:
     emit("contributing-requirements", {"found": False, "content": None})
     raise SystemExit(0)
 
 try:
     content = base64.b64decode(d["content"]).decode("utf-8")
 except (ValueError, UnicodeDecodeError):
-    fail("contributing-requirements", "could not decode CONTRIBUTING.md")
+    fail("contributing-requirements", f"could not decode {source}")
 
-emit("contributing-requirements", {"found": True, "content": content})
+emit("contributing-requirements", {"found": True, "path": source, "content": content})
 PYEOF
         ;;
 
@@ -825,7 +917,7 @@ PYEOF
         REPO="$REPO" python3 <<'PYEOF'
 import base64
 import os
-from _envelope import emit, fail, fetch_json
+from _envelope import emit, fail, fetch_json, fetch_optional_json
 from _templates import ISSUE_TEMPLATE_LEGACY_PATHS, issue_template_dir_paths
 
 REPO = os.environ["REPO"]
@@ -845,13 +937,53 @@ tree = fetch_json(f"/repos/{REPO}/git/trees/{sha}?recursive=1")
 if tree is None:
     fail("templates-issue",
          f"could not fetch repository tree for {sha} — cannot enumerate templates")
+tree_truncated = bool(tree.get("truncated"))
 paths = [
     item["path"] for item in tree.get("tree", [])
     if item.get("type") == "blob"
 ]
 
-dir_templates = issue_template_dir_paths(paths, extensions=(".md", ".yml", ".yaml"))
-legacy = [p for p in ISSUE_TEMPLATE_LEGACY_PATHS if p in paths]
+
+def existing_file_paths(candidates):
+    existing = []
+    for candidate in candidates:
+        d, found = fetch_optional_json(f"/repos/{REPO}/contents/{candidate}?ref={ref}")
+        if found is None:
+            fail("templates-issue", f"could not probe template path {candidate}")
+        if found and isinstance(d, dict) and "content" in d:
+            existing.append(candidate)
+    return existing
+
+
+def directory_template_paths(directory):
+    d, found = fetch_optional_json(f"/repos/{REPO}/contents/{directory}?ref={ref}")
+    if found is None:
+        fail("templates-issue", f"could not probe template directory {directory}")
+    if not found or not isinstance(d, list):
+        return []
+    paths = [
+        item["path"] for item in d
+        if item.get("type") == "file"
+    ]
+    return issue_template_dir_paths(paths, extensions=(".md", ".yml", ".yaml"))
+
+
+def is_empty_template(body):
+    stripped = body.strip()
+    if not stripped:
+        return True
+    if not stripped.startswith("---"):
+        return False
+    parts = stripped.split("---", 2)
+    return len(parts) >= 3 and not parts[2].strip()
+
+
+if tree_truncated:
+    dir_templates = directory_template_paths(".github/ISSUE_TEMPLATE")
+    legacy = existing_file_paths(ISSUE_TEMPLATE_LEGACY_PATHS)
+else:
+    dir_templates = issue_template_dir_paths(paths, extensions=(".md", ".yml", ".yaml"))
+    legacy = [p for p in ISSUE_TEMPLATE_LEGACY_PATHS if p in paths]
 ordered = dir_templates if dir_templates else legacy
 
 if not ordered:
@@ -870,7 +1002,7 @@ for path in ordered:
     except (ValueError, UnicodeDecodeError):
         fetch_failures.append(path)
         continue
-    if not body.strip():
+    if is_empty_template(body):
         continue  # treat empty file as absent — matches GitHub's own behavior
     templates.append({"path": path, "content": body.rstrip()})
 
@@ -901,7 +1033,7 @@ PYEOF
         REPO="$REPO" python3 <<'PYEOF'
 import base64
 import os
-from _envelope import emit, fail, fetch_json
+from _envelope import emit, fail, fetch_json, fetch_optional_json
 
 REPO = os.environ["REPO"]
 repo_meta = fetch_json(f"/repos/{REPO}")
@@ -918,6 +1050,7 @@ tree = fetch_json(f"/repos/{REPO}/git/trees/{sha}?recursive=1")
 if tree is None:
     fail("templates-pr",
          f"could not fetch repository tree for {sha} — cannot enumerate templates")
+tree_truncated = bool(tree.get("truncated"))
 paths = [
     item["path"] for item in tree.get("tree", [])
     if item.get("type") == "blob"
@@ -928,23 +1061,64 @@ def ci_match(path, candidate):
     return path.lower() == candidate.lower()
 
 
+def existing_file_paths(candidates):
+    existing = []
+    for candidate in candidates:
+        d, found = fetch_optional_json(f"/repos/{REPO}/contents/{candidate}?ref={ref}")
+        if found is None:
+            fail("templates-pr", f"could not probe template path {candidate}")
+        if found and isinstance(d, dict) and "content" in d:
+            existing.append(candidate)
+    return existing
+
+
+def directory_template_paths(directory):
+    d, found = fetch_optional_json(f"/repos/{REPO}/contents/{directory}?ref={ref}")
+    if found is None:
+        fail("templates-pr", f"could not probe template directory {directory}")
+    if not found or not isinstance(d, list):
+        return []
+    return sorted(
+        item["path"] for item in d
+        if item.get("type") == "file"
+        and item.get("path", "").lower().endswith(".md")
+    )
+
+
+def is_empty_template(body):
+    stripped = body.strip()
+    if not stripped:
+        return True
+    if not stripped.startswith("---"):
+        return False
+    parts = stripped.split("---", 2)
+    return len(parts) >= 3 and not parts[2].strip()
+
+
 single_candidates = (
     ".github/PULL_REQUEST_TEMPLATE.md",
+    ".github/pull_request_template.md",
     "docs/PULL_REQUEST_TEMPLATE.md",
+    "docs/pull_request_template.md",
     "PULL_REQUEST_TEMPLATE.md",
+    "pull_request_template.md",
 )
-single_found = []
-for cand in single_candidates:
-    for p in paths:
-        if ci_match(p, cand):
-            single_found.append(p)
-            break
+if tree_truncated:
+    single_found = existing_file_paths(single_candidates)
+    dir_templates = directory_template_paths(".github/PULL_REQUEST_TEMPLATE")
+else:
+    single_found = []
+    for cand in single_candidates:
+        for p in paths:
+            if ci_match(p, cand) and p not in single_found:
+                single_found.append(p)
+                break
 
-dir_templates = sorted(
-    p for p in paths
-    if p.lower().startswith(".github/pull_request_template/")
-    and p.lower().endswith(".md")
-)
+    dir_templates = sorted(
+        p for p in paths
+        if p.lower().startswith(".github/pull_request_template/")
+        and p.lower().endswith(".md")
+    )
 
 # .github/PULL_REQUEST_TEMPLATE.md first, then directory templates,
 # then docs/ and root fallbacks.
@@ -968,7 +1142,7 @@ for path in ordered:
     except (ValueError, UnicodeDecodeError):
         fetch_failures.append(path)
         continue
-    if not body.strip():
+    if is_empty_template(body):
         continue  # treat empty file as absent — matches GitHub's own behavior
     templates.append({"path": path, "content": body.rstrip()})
 
