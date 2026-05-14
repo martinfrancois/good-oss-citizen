@@ -4,6 +4,16 @@ All notable changes to the `good-oss-citizen` tile are recorded here. The format
 
 ## [Unreleased]
 
+### Fixed — GitHub fetch helpers: keep curl tokens out of argv
+
+- When the helper falls back to `curl`, authenticated requests now pass the
+  Authorization header through curl's stdin config instead of placing
+  `GH_TOKEN` / `GITHUB_TOKEN` in the process arguments.
+- Added status-aware optional JSON fetch support so commands can distinguish a
+  legitimate missing optional file from an ambiguous GitHub API failure.
+- `legal` now fails on ambiguous DCO status instead of reporting a failed DCO
+  lookup as "no DCO file".
+
 ### Changed — Tighten two low-lift template-compliance evals
 
 Post-merge 3-run eval after #39 (run `019dd134-b762-7619-bb00-25ee15641dab`) flagged two scenarios where baseline already cleared 75% and the tile's lift was driven by narrow format details rather than the rubric's core prescriptions:
