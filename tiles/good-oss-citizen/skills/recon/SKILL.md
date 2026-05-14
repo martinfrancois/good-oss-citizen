@@ -41,7 +41,7 @@ The script returns `data.files` — an array with one entry per policy file (`AI
 
 ## Step 3: Should I work on THIS issue? (issue checks)
 
-Run ALL three commands — these are not optional:
+If the task names an existing GitHub issue number, run ALL three commands — these are not optional:
 ```bash
 bash .tessl/tiles/tessl-labs/good-oss-citizen/skills/recon/scripts/bash/github.sh issue OWNER/REPO ISSUE_NUMBER
 ```
@@ -58,6 +58,8 @@ If ANYONE has claimed it: **STOP writing code for this issue, then proceed immed
 If NOT claimed, continue with remaining checks:
 - Cross-reference the issue output (labels, assignment) against any restrictions found in Step 2. If the AI policy restricts AI usage on issues with specific labels (e.g., "good first issue") and THIS issue has that label: **STOP, then write `redirect_report.md` in the workspace root** — containing the restriction (with the policy quote), why the restriction exists, alternative open issues the contributor CAN work on with AI, and non-AI guidance for the restricted issue (approach hints from the issue, referenced code files, relevant conventions from recon). The file is the deliverable.
 - If related-prs returns prior rejected attempts: tell the contributor WHAT was tried, WHO rejected it, and WHY — quote the maintainer. The contributor must adapt their approach to avoid the same mistakes.
+
+If the task does not name an existing GitHub issue number, do not run issue-numbered commands with a placeholder. Continue with the no-issue research path: search closed PRs and closed issues for prior rejected attempts, then let `propose` decide whether the right venue is an issue, discussion, RFC, or pull request.
 
 ## Step 4: Get disclosure format
 

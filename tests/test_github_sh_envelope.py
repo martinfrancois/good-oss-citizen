@@ -90,6 +90,16 @@ def assert_issue_template_config_excluded() -> None:
     ], "extension filter must apply on top of the config exclusion"
 
 
+def assert_no_issue_flow_documented() -> None:
+    """Regression guard: no-issue contributions must not use placeholder numbers."""
+    recon = (REPO_ROOT / "tiles/good-oss-citizen/skills/recon/SKILL.md").read_text()
+    propose = (REPO_ROOT / "tiles/good-oss-citizen/skills/propose/SKILL.md").read_text()
+    assert "does not name an existing GitHub issue number" in recon
+    assert "do not run issue-numbered commands with a placeholder" in recon
+    assert "If the contribution has no issue number" in propose
+    assert "skip the issue-numbered commands" in propose
+
+
 def run(cmd_name: str, args: list[str]) -> tuple[int, str]:
     proc = subprocess.run(
         ["bash", str(GITHUB_SH), cmd_name, *args],
@@ -151,6 +161,8 @@ def main() -> int:
     try:
         assert_issue_template_config_excluded()
         print("PASS static-regression (ISSUE_TEMPLATE config.yml excluded)")
+        assert_no_issue_flow_documented()
+        print("PASS static-regression (no-issue flow documented)")
     except AssertionError as e:
         print(f"FAIL static-regression: {e}", file=sys.stderr)
         return 1

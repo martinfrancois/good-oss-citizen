@@ -9,10 +9,11 @@ Determine the right venue for a proposed change and draft the proposal. This ski
 
 ## Step 1: Check issue metadata
 
-Before proposing anything, run these checks:
+Before proposing anything for an existing issue, run these checks. If the contribution has no issue number, skip the issue-numbered commands and go directly to the prior-attempt search in Step 2.
 
 **Read the issue AND its comments:**
 ```bash
+bash .tessl/tiles/tessl-labs/good-oss-citizen/skills/recon/scripts/bash/github.sh issue OWNER/REPO NUMBER
 bash .tessl/tiles/tessl-labs/good-oss-citizen/skills/recon/scripts/bash/github.sh issue-comments OWNER/REPO NUMBER
 ```
 Check for:

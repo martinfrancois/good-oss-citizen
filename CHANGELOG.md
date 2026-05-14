@@ -4,6 +4,12 @@ All notable changes to the `good-oss-citizen` tile are recorded here. The format
 
 ## [Unreleased]
 
+### Fixed — No-issue recon/propose flow wording
+
+- Recon and propose now explicitly tell agents to skip issue-numbered helper
+  commands when a task has no existing GitHub issue number, instead of running
+  placeholder issue commands before the prior-attempt search.
+
 ### Changed — Tighten two low-lift template-compliance evals
 
 Post-merge 3-run eval after #39 (run `019dd134-b762-7619-bb00-25ee15641dab`) flagged two scenarios where baseline already cleared 75% and the tile's lift was driven by narrow format details rather than the rubric's core prescriptions:
