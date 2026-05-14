@@ -159,43 +159,102 @@ PYEOF
     issue-comments|pr-comments)
         REPO="$REPO" ARG="$ARG" CMD="$COMMAND" python3 <<'PYEOF'
 import os
-from _envelope import emit, fail, fetch_json
+from _envelope import emit, fail, fetch_json_pages
 
 REPO = os.environ["REPO"]
 ARG = os.environ["ARG"]
 CMD = os.environ["CMD"]
-comments = fetch_json(f"/repos/{REPO}/issues/{ARG}/comments")
+comments = fetch_json_pages(f"/repos/{REPO}/issues/{ARG}/comments")
 if comments is None:
     fail(CMD, f"could not fetch comments for {ARG} on {REPO}")
 
-emit(CMD, {
-    "comments": [
+
+def user_login(item):
+    user = item.get("user") if isinstance(item, dict) else None
+    return user.get("login", "") if isinstance(user, dict) else ""
+
+
+def comment_payload(comment):
+    payload = {
+        "user": comment.get("user", ""),
+        "created_at": comment.get("created_at", ""),
+        "body": comment.get("body", ""),
+    }
+    for key in ("kind", "state", "path", "line"):
+        if comment.get(key):
+            payload[key] = comment[key]
+    return payload
+
+
+if CMD == "pr-comments":
+    reviews = fetch_json_pages(f"/repos/{REPO}/pulls/{ARG}/reviews")
+    review_comments = fetch_json_pages(f"/repos/{REPO}/pulls/{ARG}/comments")
+    if reviews is None or review_comments is None:
+        fail(CMD, f"could not fetch review comments for PR {ARG} on {REPO}")
+    comments = [
         {
-            "user": c.get("user", {}).get("login", ""),
+            "user": user_login(c),
+            "created_at": c.get("created_at", ""),
+            "body": c.get("body", ""),
+            "kind": "conversation",
+        }
+        for c in comments
+    ] + [
+        {
+            "user": user_login(r),
+            "created_at": r.get("submitted_at", ""),
+            "body": r.get("body", ""),
+            "state": r.get("state", ""),
+            "kind": "review",
+        }
+        for r in reviews
+        if r.get("body")
+    ] + [
+        {
+            "user": user_login(c),
+            "created_at": c.get("created_at", ""),
+            "body": c.get("body", ""),
+            "path": c.get("path", ""),
+            "line": c.get("line") or c.get("original_line"),
+            "kind": "review_comment",
+        }
+        for c in review_comments
+    ]
+else:
+    comments = [
+        {
+            "user": user_login(c),
             "created_at": c.get("created_at", ""),
             "body": c.get("body", ""),
         }
         for c in comments
     ]
-})
+
+comments = sorted(comments, key=lambda c: c.get("created_at") or "")
+emit(CMD, {"comments": [comment_payload(c) for c in comments]})
 PYEOF
         ;;
 
     check-claim)
         REPO="$REPO" ARG="$ARG" python3 <<'PYEOF'
 import os
-from _envelope import emit, fail, fetch_json
+from _envelope import emit, fail, fetch_json_pages
 
 REPO = os.environ["REPO"]
 ARG = os.environ["ARG"]
-comments = fetch_json(f"/repos/{REPO}/issues/{ARG}/comments")
+comments = fetch_json_pages(f"/repos/{REPO}/issues/{ARG}/comments")
 if comments is None:
     fail("check-claim", f"could not fetch comments for {ARG} on {REPO}")
+
+
+def user_login(item):
+    user = item.get("user") if isinstance(item, dict) else None
+    return user.get("login", "") if isinstance(user, dict) else ""
 
 emit("check-claim", {
     "comments": [
         {
-            "user": c.get("user", {}).get("login", ""),
+            "user": user_login(c),
             "created_at": c.get("created_at", ""),
             "body": c.get("body", ""),
         }
@@ -210,12 +269,12 @@ PYEOF
     issues-open|issues-closed)
         REPO="$REPO" CMD="$COMMAND" python3 <<'PYEOF'
 import os
-from _envelope import emit, fail, fetch_json
+from _envelope import emit, fail, fetch_json_pages
 
 REPO = os.environ["REPO"]
 CMD = os.environ["CMD"]
 state = "open" if CMD == "issues-open" else "closed"
-issues = fetch_json(f"/repos/{REPO}/issues?state={state}&per_page=30")
+issues = fetch_json_pages(f"/repos/{REPO}/issues?state={state}")
 if issues is None:
     fail(CMD, f"could not fetch {state} issues for {REPO}")
 
@@ -239,10 +298,10 @@ PYEOF
     prs-closed)
         REPO="$REPO" python3 <<'PYEOF'
 import os
-from _envelope import emit, fail, fetch_json
+from _envelope import emit, fail, fetch_json_pages
 
 REPO = os.environ["REPO"]
-prs = fetch_json(f"/repos/{REPO}/pulls?state=closed&per_page=30")
+prs = fetch_json_pages(f"/repos/{REPO}/pulls?state=closed")
 if prs is None:
     fail("prs-closed", f"could not fetch closed PRs for {REPO}")
 
@@ -262,7 +321,7 @@ PYEOF
     pr-history)
         REPO="$REPO" python3 <<'PYEOF'
 import os
-from _envelope import emit, fail, fetch_json
+from _envelope import emit, fail, fetch_json, fetch_json_pages
 
 REPO = os.environ["REPO"]
 prs = fetch_json(f"/repos/{REPO}/pulls?state=closed&per_page=20")
@@ -271,7 +330,18 @@ if prs is None:
 
 out = []
 warnings = []
-for p in prs:
+
+
+def user_login(item):
+    user = item.get("user") if isinstance(item, dict) else None
+    return user.get("login", "") if isinstance(user, dict) else ""
+
+
+def discussion_sort_key(item):
+    return item.get("created_at") or ""
+
+
+for p in prs[:20]:
     merged = bool(p.get("merged_at"))
     entry = {
         "number": p["number"],
@@ -281,21 +351,51 @@ for p in prs:
         "comments_fetch_failed": False,
     }
     if not merged:
-        comments = fetch_json(f"/repos/{REPO}/issues/{p['number']}/comments")
-        if comments is None:
+        comments = fetch_json_pages(f"/repos/{REPO}/issues/{p['number']}/comments")
+        reviews = fetch_json_pages(f"/repos/{REPO}/pulls/{p['number']}/reviews")
+        review_comments = fetch_json_pages(f"/repos/{REPO}/pulls/{p['number']}/comments")
+        if comments is None or reviews is None or review_comments is None:
             entry["comments_fetch_failed"] = True
             warnings.append(
-                f"could not fetch comments for PR #{p['number']} — "
+                f"could not fetch all comments for PR #{p['number']} — "
                 "this may hide rejection feedback"
             )
         else:
-            entry["comments"] = [
+            conversation_comments = [
                 {
-                    "user": c.get("user", {}).get("login", ""),
+                    "user": user_login(c),
                     "body": (c.get("body", "") or "")[:500],
+                    "kind": "conversation",
+                    "created_at": c.get("created_at", ""),
                 }
                 for c in comments
             ]
+            review_bodies = [
+                {
+                    "user": user_login(r),
+                    "body": (r.get("body", "") or "")[:500],
+                    "kind": "review",
+                    "state": r.get("state", ""),
+                    "created_at": r.get("submitted_at") or r.get("created_at", ""),
+                }
+                for r in reviews
+                if r.get("body")
+            ]
+            inline_comments = [
+                {
+                    "user": user_login(c),
+                    "body": (c.get("body", "") or "")[:500],
+                    "kind": "review_comment",
+                    "path": c.get("path", ""),
+                    "line": c.get("line") or c.get("original_line"),
+                    "created_at": c.get("created_at", ""),
+                }
+                for c in review_comments
+            ]
+            entry["comments"] = sorted(
+                conversation_comments + review_bodies + inline_comments,
+                key=discussion_sort_key,
+            )
     out.append(entry)
 
 emit("pr-history", {"prs": out}, warnings=warnings)
@@ -305,16 +405,27 @@ PYEOF
     related-prs)
         REPO="$REPO" ARG="$ARG" python3 <<'PYEOF'
 import os
-from _envelope import emit, fail, fetch_json
+from _envelope import emit, fail, fetch_json_pages
 
 REPO = os.environ["REPO"]
 ISSUE_NUM = os.environ["ARG"]
-prs = fetch_json(f"/repos/{REPO}/pulls?state=closed&per_page=20")
+prs = fetch_json_pages(f"/repos/{REPO}/pulls?state=closed")
 if prs is None:
     fail("related-prs", f"could not fetch closed PRs for {REPO}")
 
 found = []
 warnings = []
+
+
+def user_login(item):
+    user = item.get("user") if isinstance(item, dict) else None
+    return user.get("login", "") if isinstance(user, dict) else ""
+
+
+def discussion_sort_key(item):
+    return item.get("created_at") or ""
+
+
 for p in prs:
     title = p.get("title") or ""
     body = p.get("body") or ""
@@ -329,21 +440,51 @@ for p in prs:
             "comments_fetch_failed": False,
         }
         if not entry["merged"]:
-            comments = fetch_json(f"/repos/{REPO}/issues/{p['number']}/comments")
-            if comments is None:
+            comments = fetch_json_pages(f"/repos/{REPO}/issues/{p['number']}/comments")
+            reviews = fetch_json_pages(f"/repos/{REPO}/pulls/{p['number']}/reviews")
+            review_comments = fetch_json_pages(f"/repos/{REPO}/pulls/{p['number']}/comments")
+            if comments is None or reviews is None or review_comments is None:
                 entry["comments_fetch_failed"] = True
                 warnings.append(
-                    f"could not fetch comments for PR #{p['number']} — "
+                    f"could not fetch all comments for PR #{p['number']} — "
                     "this may hide rejection feedback"
                 )
             else:
-                entry["comments"] = [
+                conversation_comments = [
                     {
-                        "user": c.get("user", {}).get("login", ""),
+                        "user": user_login(c),
                         "body": (c.get("body", "") or "")[:500],
+                        "kind": "conversation",
+                        "created_at": c.get("created_at", ""),
                     }
                     for c in comments
                 ]
+                review_bodies = [
+                    {
+                        "user": user_login(r),
+                        "body": (r.get("body", "") or "")[:500],
+                        "kind": "review",
+                        "state": r.get("state", ""),
+                        "created_at": r.get("submitted_at") or r.get("created_at", ""),
+                    }
+                    for r in reviews
+                    if r.get("body")
+                ]
+                inline_comments = [
+                    {
+                        "user": user_login(c),
+                        "body": (c.get("body", "") or "")[:500],
+                        "kind": "review_comment",
+                        "path": c.get("path", ""),
+                        "line": c.get("line") or c.get("original_line"),
+                        "created_at": c.get("created_at", ""),
+                    }
+                    for c in review_comments
+                ]
+                entry["comments"] = sorted(
+                    conversation_comments + review_bodies + inline_comments,
+                    key=discussion_sort_key,
+                )
         found.append(entry)
 
 emit("related-prs", {"issue_number": ISSUE_NUM, "prs": found}, warnings=warnings)
@@ -378,11 +519,11 @@ import re
 from _envelope import emit, fail, fetch_json
 
 REPO = os.environ["REPO"]
-prs = fetch_json(f"/repos/{REPO}/pulls?state=closed&per_page=10")
+prs = fetch_json(f"/repos/{REPO}/pulls?state=closed&per_page=20")
 if prs is None:
     fail("commit-conventions", f"could not fetch closed PRs for {REPO}")
 
-merged = [p for p in prs if p.get("merged_at")]
+merged = [p for p in prs if p.get("merged_at")][:20]
 if not merged:
     emit("commit-conventions", {
         "sample_size": 0, "conventional": 0, "signed_off": 0,
@@ -442,11 +583,11 @@ import re
 from _envelope import emit, fail, fetch_json
 
 REPO = os.environ["REPO"]
-prs = fetch_json(f"/repos/{REPO}/pulls?state=closed&per_page=10")
+prs = fetch_json(f"/repos/{REPO}/pulls?state=closed&per_page=20")
 if prs is None:
     fail("branch-conventions", f"could not fetch closed PRs for {REPO}")
 
-merged = [p for p in prs if p.get("merged_at")]
+merged = [p for p in prs if p.get("merged_at")][:20]
 if not merged:
     emit("branch-conventions", {
         "sample_size": 0, "patterns": {}, "numbered": 0,
@@ -578,7 +719,7 @@ import os
 from _envelope import emit, fail, fetch_json
 
 REPO = os.environ["REPO"]
-prs = fetch_json(f"/repos/{REPO}/pulls?state=closed&per_page=10")
+prs = fetch_json(f"/repos/{REPO}/pulls?state=closed&per_page=20")
 if prs is None:
     fail("pr-stats", f"could not fetch closed PRs for {REPO}")
 

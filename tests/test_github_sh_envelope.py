@@ -26,12 +26,14 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_DIR = REPO_ROOT / "tiles" / "good-oss-citizen" / "skills" / "recon" / "scripts" / "bash"
 GITHUB_SH = SCRIPT_DIR / "github.sh"
 sys.path.insert(0, str(SCRIPT_DIR))
 from _templates import issue_template_dir_paths  # noqa: E402
+import _envelope  # noqa: E402
 
 # (command-name, args-template, expected-ok). args-template uses {repo} and
 # {issue_number}/{pr_number}/{file_path} placeholders.
@@ -88,6 +90,30 @@ def assert_issue_template_config_excluded() -> None:
         ".github/ISSUE_TEMPLATE/bug.yml",
         ".github/ISSUE_TEMPLATE/feature.md",
     ], "extension filter must apply on top of the config exclusion"
+
+
+def assert_fetch_json_pages_paginates() -> None:
+    """Regression guard: fallback pagination returns items beyond page 1."""
+    responses = [
+        [{"id": i} for i in range(100)],
+        [{"id": 100}],
+    ]
+
+    def fake_fetch_json(endpoint: str):
+        if endpoint.endswith("&page=1"):
+            return responses[0]
+        if endpoint.endswith("&page=2"):
+            return responses[1]
+        raise AssertionError(f"unexpected endpoint: {endpoint}")
+
+    def fake_run(cmd, **kwargs):
+        raise FileNotFoundError
+
+    with mock.patch.object(_envelope.subprocess, "run", side_effect=fake_run):
+        with mock.patch.object(_envelope, "fetch_json", side_effect=fake_fetch_json):
+            items = _envelope.fetch_json_pages("/repos/example/project/issues?state=open")
+
+    assert items == responses[0] + responses[1]
 
 
 def run(cmd_name: str, args: list[str]) -> tuple[int, str]:
@@ -151,6 +177,8 @@ def main() -> int:
     try:
         assert_issue_template_config_excluded()
         print("PASS static-regression (ISSUE_TEMPLATE config.yml excluded)")
+        assert_fetch_json_pages_paginates()
+        print("PASS static-regression (fetch_json_pages paginates)")
     except AssertionError as e:
         print(f"FAIL static-regression: {e}", file=sys.stderr)
         return 1

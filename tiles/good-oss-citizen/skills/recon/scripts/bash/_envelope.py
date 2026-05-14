@@ -126,4 +126,38 @@ def fetch_json(endpoint):
         return None
 
 
+def fetch_json_pages(endpoint):
+    """Fetch all pages for an array-returning GitHub endpoint."""
+    try:
+        result = subprocess.run(
+            ["gh", "api", "--paginate", "--slurp", endpoint],
+            capture_output=True,
+            text=True,
+            timeout=TIMEOUT,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        result = None
+    if result and result.returncode == 0 and result.stdout.strip():
+        try:
+            pages = json.loads(result.stdout)
+            if all(isinstance(page, list) for page in pages):
+                return [item for page in pages for item in page]
+            if isinstance(pages, list):
+                return pages
+        except (TypeError, json.JSONDecodeError):
+            pass
+
+    items = []
+    separator = "&" if "?" in endpoint else "?"
+    page = 1
+    while True:
+        data = fetch_json(f"{endpoint}{separator}per_page=100&page={page}")
+        if not isinstance(data, list):
+            return None
+        items.extend(data)
+        if len(data) < 100:
+            return items
+        page += 1
+
+
 _install_excepthook()

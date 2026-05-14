@@ -4,6 +4,13 @@ All notable changes to the `good-oss-citizen` tile are recorded here. The format
 
 ## [Unreleased]
 
+### Fixed — GitHub helper pagination and PR discussion context
+
+- Added paginated fetch support for list-returning GitHub API endpoints so
+  issue, PR, and convention scans do not silently stop at the first page.
+- `pr-comments`, `pr-history`, and `related-prs` now include PR review bodies
+  and inline review comments alongside regular issue conversation comments.
+
 ### Changed — Tighten two low-lift template-compliance evals
 
 Post-merge 3-run eval after #39 (run `019dd134-b762-7619-bb00-25ee15641dab`) flagged two scenarios where baseline already cleared 75% and the tile's lift was driven by narrow format details rather than the rubric's core prescriptions:
